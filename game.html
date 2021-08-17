@@ -1,0 +1,343 @@
+<!doctype>
+<html>
+	<head>
+		<style>
+		body{
+			margin:0;
+			background: #eee;
+		}
+		#canvas{
+			background: black;
+		}
+		</style>
+		
+	</head>
+	<body>
+		<canvas id="canvas"></canvas>
+	</body>
+</html>
+<script>
+// Find intersection of RAY & SEGMENT
+function getIntersection(ray,segment){
+
+	// RAY in parametric: Point + Delta*T1
+	var r_px = ray.a.x;
+	var r_py = ray.a.y;
+	var r_dx = ray.b.x-ray.a.x;
+	var r_dy = ray.b.y-ray.a.y;
+
+	// SEGMENT in parametric: Point + Delta*T2
+	var s_px = segment.a.x;
+	var s_py = segment.a.y;
+	var s_dx = segment.b.x-segment.a.x;
+	var s_dy = segment.b.y-segment.a.y;
+
+	// Are they parallel? If so, no intersect
+	var r_mag = Math.sqrt(r_dx*r_dx+r_dy*r_dy);
+	var s_mag = Math.sqrt(s_dx*s_dx+s_dy*s_dy);
+	if(r_dx/r_mag==s_dx/s_mag && r_dy/r_mag==s_dy/s_mag){
+		// Unit vectors are the same.
+		return null;
+	}
+
+	// SOLVE FOR T1 & T2
+	// r_px+r_dx*T1 = s_px+s_dx*T2 && r_py+r_dy*T1 = s_py+s_dy*T2
+	// ==> T1 = (s_px+s_dx*T2-r_px)/r_dx = (s_py+s_dy*T2-r_py)/r_dy
+	// ==> s_px*r_dy + s_dx*T2*r_dy - r_px*r_dy = s_py*r_dx + s_dy*T2*r_dx - r_py*r_dx
+	// ==> T2 = (r_dx*(s_py-r_py) + r_dy*(r_px-s_px))/(s_dx*r_dy - s_dy*r_dx)
+	var T2 = (r_dx*(s_py-r_py) + r_dy*(r_px-s_px))/(s_dx*r_dy - s_dy*r_dx);
+	var T1 = (s_px+s_dx*T2-r_px)/r_dx;
+
+	// Must be within parametic whatevers for RAY/SEGMENT
+	if(T1<0) return null;
+	if(T2<0 || T2>1) return null;
+
+	// Return the POINT OF INTERSECTION
+	return {
+		x: r_px+r_dx*T1,
+		y: r_py+r_dy*T1,
+		param: T1
+	};
+
+}
+
+function getSightPolygon(sightX,sightY){
+
+	// Get all unique points
+	var points = (function(segments){
+		var a = [];
+		segments.forEach(function(seg){
+			a.push(seg.a,seg.b);
+		});
+		return a;
+	})(segments);
+	var uniquePoints = (function(points){
+		var set = {};
+		return points.filter(function(p){
+			var key = p.x+","+p.y;
+			if(key in set){
+				return false;
+			}else{
+				set[key]=true;
+				return true;
+			}
+		});
+	})(points);
+
+	// Get all angles
+	var uniqueAngles = [];
+	for(var j=0;j<uniquePoints.length;j++){
+		var uniquePoint = uniquePoints[j];
+		var angle = Math.atan2(uniquePoint.y-sightY,uniquePoint.x-sightX);
+		uniquePoint.angle = angle;
+		uniqueAngles.push(angle-0.00001,angle,angle+0.00001);
+	}
+
+	// RAYS IN ALL DIRECTIONS
+	var intersects = [];
+	for(var j=0;j<uniqueAngles.length;j++){
+		var angle = uniqueAngles[j];
+
+        var closestIntersect = findIntersect(angle, sightX, sightY);
+        // Intersect angle
+		if(!closestIntersect) continue;
+		closestIntersect.angle = angle;
+        // Add to list of intersects
+		intersects.push(closestIntersect);
+    }
+
+    // // every direction
+	for(var angle=0;angle<Math.PI*2;angle+=(Math.PI*2)/50){
+
+		// Calculate dx & dy from angle
+		var dx = Math.cos(angle);
+		var dy = Math.sin(angle);
+
+		// Ray from center of screen to mouse
+		var ray = {
+			a:{x:Mouse.x,y:Mouse.y},
+			b:{x:Mouse.x+dx,y:Mouse.y+dy}
+		};
+
+		// Find CLOSEST intersection
+		var closestIntersect = null;
+		for(var i=0;i<segments.length;i++){
+			var intersect = getIntersection(ray,segments[i]);
+			if(!intersect) continue;
+			if(!closestIntersect || intersect.param<closestIntersect.param){
+				closestIntersect=intersect;
+			}
+		}
+
+		// Add to list of intersects
+		intersects.push(closestIntersect);
+
+	}
+
+
+	// Sort intersects by angle
+	intersects = intersects.sort(function(a,b){
+		return a.angle-b.angle;
+	});
+
+	// Polygon is intersects, in order of angle
+	return intersects;
+
+}
+
+function findIntersect(angle, sightX, sightY){
+    		// Calculate dx & dy from angle
+		var dx = Math.cos(angle);
+		var dy = Math.sin(angle);
+
+		// Ray from center of screen to mouse
+		var ray = {
+			a:{x:sightX,y:sightY},
+			b:{x:sightX+dx,y:sightY+dy}
+		};
+
+		// Find CLOSEST intersection
+		var closestIntersect = null;
+		for(var i=0;i<segments.length;i++){
+			var intersect = getIntersection(ray,segments[i]);
+			if(!intersect) continue;
+			if(!closestIntersect || intersect.param<closestIntersect.param){
+				closestIntersect=intersect;
+			}
+		}
+
+		return closestIntersect;
+}
+
+///////////////////////////////////////////////////////
+
+// DRAWING
+var canvas = document.getElementById("canvas");
+var ctx = canvas.getContext("2d");
+ctx.w = canvas.width = innerWidth;
+ctx.h = canvas.height = innerHeight;
+var foreground = new Image();
+function draw(){
+
+	// Clear canvas
+	ctx.clearRect(0,0,canvas.width,canvas.height);
+
+	// Sight Polygons
+	var fuzzyRadius = 10;
+	var polygons = [getSightPolygon(Mouse.x,Mouse.y)];
+	for(var angle=0;angle<Math.PI*2;angle+=(Math.PI*2)/10){
+		var dx = Math.cos(angle)*fuzzyRadius;
+		var dy = Math.sin(angle)*fuzzyRadius;
+		polygons.push(getSightPolygon(Mouse.x+dx,Mouse.y+dy));
+	};
+
+	// DRAW AS A GIANT POLYGON
+	for(var i=1;i<polygons.length;i++){
+		drawPolygon(polygons[i],ctx,"rgba(255,255,255,0.2)");
+	}
+	drawPolygon(polygons[0],ctx,"#fff");
+
+    // Draw segments
+	ctx.strokeStyle = "#999";
+	for(var i=0;i<segments.length;i++){
+		var seg = segments[i];
+		ctx.beginPath();
+		ctx.moveTo(seg.a.x,seg.a.y);
+		ctx.lineTo(seg.b.x,seg.b.y);
+		ctx.stroke();
+	}
+
+	// Masked Foreground
+	ctx.globalCompositeOperation = "source-in";
+	ctx.drawImage(foreground,0,0);
+	ctx.globalCompositeOperation = "source-over";
+
+	// Draw dots
+	ctx.fillStyle = "#fff";
+	ctx.beginPath();
+    ctx.arc(Mouse.x, Mouse.y, 2, 0, 2*Math.PI, false);
+    ctx.fill();
+	for(var angle=0;angle<Math.PI*2;angle+=(Math.PI*2)/10){
+		var dx = Math.cos(angle)*fuzzyRadius;
+		var dy = Math.sin(angle)*fuzzyRadius;
+		ctx.beginPath();
+    	ctx.arc(Mouse.x+dx, Mouse.y+dy, 2, 0, 2*Math.PI, false);
+    	ctx.fill();
+    }
+
+}
+
+function drawPolygon(polygon,ctx,fillStyle){
+	ctx.fillStyle = fillStyle;
+	ctx.beginPath();
+	adjust = findAdjust(Mouse.x,Mouse.y,polygon[0].x,polygon[0].y);
+	ctx.moveTo(adjust.x,adjust.y);
+	for(var i=1;i<polygon.length;i++){
+		var intersect = polygon[i];
+		adjust = findAdjust(Mouse.x,Mouse.y,intersect.x,intersect.y);
+		ctx.lineTo(adjust.x,adjust.y);
+	}
+	ctx.fill();
+}
+
+// This function finds endpoint for shorter ray.
+function findAdjust(x1,y1,x2,y2){
+	var actualDistance = Math.sqrt(((x2-x1)**2)+((y2-y1)**2));
+	var preferedDistance = 80;
+	var ratio = preferedDistance/actualDistance;
+	// Shorten unless line intersects within that distance
+	if(ratio>0 && ratio<1){
+		return {x:(1-ratio)*x1+ratio*x2, y:(1-ratio)*y1+ratio*y2};
+	}else{
+		return {x:x2,y:y2};
+	};
+}
+
+// LINE SEGMENTS
+var segments = [
+
+	// Border
+	{a:{x:0,y:0}, b:{x:ctx.w,y:0}},
+	{a:{x:ctx.w,y:0}, b:{x:ctx.w,y:ctx.h}},
+	{a:{x:ctx.w,y:ctx.h}, b:{x:0,y:ctx.h}},
+	{a:{x:0,y:ctx.h}, b:{x:0,y:0}},
+
+	// Polygon #3
+	{a:{x:200,y:260}, b:{x:220,y:150}},
+	{a:{x:220,y:150}, b:{x:300,y:200}},
+	{a:{x:300,y:200}, b:{x:350,y:320}},
+	{a:{x:350,y:320}, b:{x:200,y:260}},
+
+	// Polygon #5
+	{a:{x:650,y:190}, b:{x:760,y:170}},
+	{a:{x:760,y:170}, b:{x:740,y:270}},
+	{a:{x:740,y:270}, b:{x:630,y:290}},
+	{a:{x:630,y:290}, b:{x:650,y:190}},
+
+	// Polygon #6
+	{a:{x:600,y:95}, b:{x:780,y:50}},
+	{a:{x:780,y:50}, b:{x:680,y:150}},
+	{a:{x:680,y:150}, b:{x:600,y:95}}
+
+];
+
+function randomPolygons(polygon){
+	let m1,m2,m3,m4,m5,m6;
+	m1=0;m2=0;
+	let s1 = ctx.w/7;
+	let s2 = ctx.h/5;
+	for(let x=0;x<7;x++){
+		for(let y=0;y<4;y++){
+			m1=s1*Math.random()*.8+(s1*x);
+			m2=s2*Math.random()*.8+(s2*y);
+			m3=rS()+m1;
+			m4=rS()+m2;
+			m5=rS()+m4;
+			polygon.push({a:{x:m1,y:m2}, b:{x:m3,y:m4}});
+			polygon.push({a:{x:m3,y:m4}, b:{x:m3,y:m5}});
+			m4=m3-rS();
+			m6=m5-rS()*.5;
+			polygon.push({a:{x:m3,y:m5}, b:{x:m4,y:m6}});
+			polygon.push({a:{x:m4,y:m6}, b:{x:m1,y:m2}});
+}}}
+	
+
+function rS(){
+	//length of side 20 - 50
+	return Math.random()*60+20;
+}
+
+randomPolygons(segments);
+
+
+
+
+// DRAW LOOP
+window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.msRequestAnimationFrame;
+var updateCanvas = true;
+function drawLoop(){
+    requestAnimationFrame(drawLoop);
+    if(updateCanvas){
+    	draw();
+    	updateCanvas = false;
+    }
+}
+window.onload = function(){
+	foreground.onload = function(){
+		drawLoop();
+	};
+	foreground.src = "AlienRay.svg";
+};
+
+// MOUSE	
+var Mouse = {
+	x: canvas.width/2,
+	y: canvas.height/2
+};
+canvas.onmousemove = function(event){	
+	Mouse.x = event.clientX;
+	Mouse.y = event.clientY;
+	updateCanvas = true;
+};
+
+</script>
