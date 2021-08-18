@@ -1,19 +1,18 @@
 <!doctype>
+<!-- Tutorial for rays: ncase.me/sight-and-light -->
+<!-- Little svg's https://codepen.io/collection/DRMKdB?cursor=ZD0wJm89MCZwPTEmdj00 -->
 <html>
-	<head>
+		<head><meta charset="utf-8" />
 		<style>
-		body{
-			margin:0;
-			background: #eee;
-		}
-		#canvas{
-			background: black;
-		}
+			canvas{
+				/* background: url(background.svg); */
+				background: linear-gradient(to bottom right,indigo,black,black,indigo);
+			}
 		</style>
-		
-	</head>
-	<body>
-		<canvas id="canvas"></canvas>
+		</head> 
+		<body style="margin:0;overflow: hidden;">
+			<canvas id=a>   
+			</canvas>
 	</body>
 </html>
 <script>
@@ -113,10 +112,10 @@ function getSightPolygon(sightX,sightY){
 		var dx = Math.cos(angle);
 		var dy = Math.sin(angle);
 
-		// Ray from center of screen to mouse
+		// Ray from center of screen to SpaceRay
 		var ray = {
-			a:{x:Mouse.x,y:Mouse.y},
-			b:{x:Mouse.x+dx,y:Mouse.y+dy}
+			a:{x:SpaceRay.x,y:SpaceRay.y},
+			b:{x:SpaceRay.x+dx,y:SpaceRay.y+dy}
 		};
 
 		// Find CLOSEST intersection
@@ -150,7 +149,7 @@ function findIntersect(angle, sightX, sightY){
 		var dx = Math.cos(angle);
 		var dy = Math.sin(angle);
 
-		// Ray from center of screen to mouse
+		// Ray from center of screen to SpaceRay
 		var ray = {
 			a:{x:sightX,y:sightY},
 			b:{x:sightX+dx,y:sightY+dy}
@@ -171,73 +170,87 @@ function findIntersect(angle, sightX, sightY){
 
 ///////////////////////////////////////////////////////
 
+  
+// initialize 2D a (c)
+// initialize game state (s)
+// initialize keys states (u,r,d,l for directions, k for all the keyboard)
+c = a.getContext`2d`, k = [u = r = d = l = s = 0]
+a.width = innerWidth;
+a.height = innerHeight;
+// (initialize your global variables here)
+c.w = innerWidth;
+c.h = innerHeight;
+// update u,l,d,r globals when an arrow key/wasd/zqsd is pressed or released
+// update k[keyCode] if any other key is pressed/released
+onkeydown = onkeyup = e => k[e.which] = self['lld*rlurdu'[e.which % 32 % 17]] = e.type[5]
+
 // DRAWING
-var canvas = document.getElementById("canvas");
-var ctx = canvas.getContext("2d");
-ctx.w = canvas.width = innerWidth;
-ctx.h = canvas.height = innerHeight;
 var foreground = new Image();
+foreground.src = "AlienRay.svg"
+var background = new Image();
+background.src = "background.svg"
+
 function draw(){
 
-	// Clear canvas
-	ctx.clearRect(0,0,canvas.width,canvas.height);
+	// Clear a
+	c.clearRect(0,0,a.width,a.height);
 
 	// Sight Polygons
 	var fuzzyRadius = 10;
-	var polygons = [getSightPolygon(Mouse.x,Mouse.y)];
+	var polygons = [getSightPolygon(SpaceRay.x,SpaceRay.y)];
 	for(var angle=0;angle<Math.PI*2;angle+=(Math.PI*2)/10){
 		var dx = Math.cos(angle)*fuzzyRadius;
 		var dy = Math.sin(angle)*fuzzyRadius;
-		polygons.push(getSightPolygon(Mouse.x+dx,Mouse.y+dy));
+		polygons.push(getSightPolygon(SpaceRay.x+dx,SpaceRay.y+dy));
 	};
 
 	// DRAW AS A GIANT POLYGON
 	for(var i=1;i<polygons.length;i++){
-		drawPolygon(polygons[i],ctx,"rgba(255,255,255,0.2)");
+		drawPolygon(polygons[i],c,"rgba(255,255,255,0.2)");
 	}
-	drawPolygon(polygons[0],ctx,"#fff");
+	drawPolygon(polygons[0],c,"#fff");
 
     // Draw segments
-	ctx.strokeStyle = "#999";
+	c.strokeStyle = "#999";
 	for(var i=0;i<segments.length;i++){
 		var seg = segments[i];
-		ctx.beginPath();
-		ctx.moveTo(seg.a.x,seg.a.y);
-		ctx.lineTo(seg.b.x,seg.b.y);
-		ctx.stroke();
+		c.beginPath();
+		c.moveTo(seg.a.x,seg.a.y);
+		c.lineTo(seg.b.x,seg.b.y);
+		c.stroke();
 	}
 
 	// Masked Foreground
-	ctx.globalCompositeOperation = "source-in";
-	ctx.drawImage(foreground,0,0);
-	ctx.globalCompositeOperation = "source-over";
+	c.globalCompositeOperation = "source-in";
+	c.drawImage(foreground,0,0);
+	c.globalCompositeOperation = "source-over";
 
 	// Draw dots
-	ctx.fillStyle = "#fff";
-	ctx.beginPath();
-    ctx.arc(Mouse.x, Mouse.y, 2, 0, 2*Math.PI, false);
-    ctx.fill();
+	c.fillStyle = "#fff";
+	c.beginPath();
+    c.arc(SpaceRay.x, SpaceRay.y, 2, 0, 2*Math.PI, false);
+    c.fill();
 	for(var angle=0;angle<Math.PI*2;angle+=(Math.PI*2)/10){
 		var dx = Math.cos(angle)*fuzzyRadius;
 		var dy = Math.sin(angle)*fuzzyRadius;
-		ctx.beginPath();
-    	ctx.arc(Mouse.x+dx, Mouse.y+dy, 2, 0, 2*Math.PI, false);
-    	ctx.fill();
+		c.beginPath();
+    	c.arc(SpaceRay.x+dx, SpaceRay.y+dy, 2, 0, 2*Math.PI, false);
+    	c.fill();
     }
 
 }
 
-function drawPolygon(polygon,ctx,fillStyle){
-	ctx.fillStyle = fillStyle;
-	ctx.beginPath();
-	adjust = findAdjust(Mouse.x,Mouse.y,polygon[0].x,polygon[0].y);
-	ctx.moveTo(adjust.x,adjust.y);
+function drawPolygon(polygon,c,fillStyle){
+	c.fillStyle = fillStyle;
+	c.beginPath();
+	adjust = findAdjust(SpaceRay.x,SpaceRay.y,polygon[0].x,polygon[0].y);
+	c.moveTo(adjust.x,adjust.y);
 	for(var i=1;i<polygon.length;i++){
 		var intersect = polygon[i];
-		adjust = findAdjust(Mouse.x,Mouse.y,intersect.x,intersect.y);
-		ctx.lineTo(adjust.x,adjust.y);
+		adjust = findAdjust(SpaceRay.x,SpaceRay.y,intersect.x,intersect.y);
+		c.lineTo(adjust.x,adjust.y);
 	}
-	ctx.fill();
+	c.fill();
 }
 
 // This function finds endpoint for shorter ray.
@@ -257,10 +270,10 @@ function findAdjust(x1,y1,x2,y2){
 var segments = [
 
 	// Border
-	{a:{x:0,y:0}, b:{x:ctx.w,y:0}},
-	{a:{x:ctx.w,y:0}, b:{x:ctx.w,y:ctx.h}},
-	{a:{x:ctx.w,y:ctx.h}, b:{x:0,y:ctx.h}},
-	{a:{x:0,y:ctx.h}, b:{x:0,y:0}},
+	{a:{x:0,y:0}, b:{x:c.w,y:0}},
+	{a:{x:c.w,y:0}, b:{x:c.w,y:c.h}},
+	{a:{x:c.w,y:c.h}, b:{x:0,y:c.h}},
+	{a:{x:0,y:c.h}, b:{x:0,y:0}},
 
 	// Polygon #3
 	{a:{x:200,y:260}, b:{x:220,y:150}},
@@ -284,8 +297,8 @@ var segments = [
 function randomPolygons(polygon){
 	let m1,m2,m3,m4,m5,m6;
 	m1=0;m2=0;
-	let s1 = ctx.w/7;
-	let s2 = ctx.h/5;
+	let s1 = c.w/7;
+	let s2 = c.h/5;
 	for(let x=0;x<7;x++){
 		for(let y=0;y<4;y++){
 			m1=s1*Math.random()*.8+(s1*x);
@@ -309,35 +322,75 @@ function rS(){
 
 randomPolygons(segments);
 
-
-
-
 // DRAW LOOP
-window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.msRequestAnimationFrame;
-var updateCanvas = true;
-function drawLoop(){
-    requestAnimationFrame(drawLoop);
-    if(updateCanvas){
-    	draw();
-    	updateCanvas = false;
+// start game loop (60fps)
+// the canvas is cleared and adjusted to fullscreen at each frame
+setInterval(e => {
+    a.width = innerWidth, a.height = innerHeight;
+    switch (s) {
+        case 0: title();
+            break;
+        case 1: game();
+            break;
+    }
+}, 16)
+
+// handle click/touch events
+// globals x and y contain the pointer's coordinates
+// in each screen, you can make a click update the game state
+// ex: "game over if we click on the bottom half of the screen" => `if(y>h/2)s=3;`
+onclick = e => {
+    x = e.pageX; y = e.pageY;
+    switch (s) {
+        case 0: s=1;
+            break;
+        case 1: ;
+            break;
     }
 }
-window.onload = function(){
-	foreground.onload = function(){
-		drawLoop();
-	};
-	foreground.src = "AlienRay.svg";
+
+function title() {
+    c.w = a.width;
+    c.h = a.height;
+	draw();
+
+	c.fillStyle = '#4B0082';
+    c.fillRect(c.w/4, c.h/3, c.w/2, c.h/2);
+	c.fillStyle = '#000000';
+    c.fillRect(c.w/4+10, c.h/3+10, c.w/2-20, c.h/2-20);
+    
+    tx("Space Invasion Simulator", c.w / 2, c.h * .55, 4, '#a4f3f4');
+    tx("Save the tiny humans from mass casualties!", c.w / 2, c.h * .62, 1.7, '#a4f3f4');
+    
+    tx('CLICK TO START!', c.w /2, c.h * .75, 1.5, '#a4f3f4');
+
+}
+
+function game(){
+	draw();
+	tx("Space Invasion Simulator", c.w / 2, c.h/10, 2, '#a4f3f4');
+}
+
+
+
+
+// SpaceRay	
+var SpaceRay = {
+	x: a.width/2,
+	y: a.height/2
+};
+// TODO replace with automated movement
+a.onmousemove = function(event){	
+	SpaceRay.x = event.clientX;
+	SpaceRay.y = event.clientY;
+	updatea = true;
 };
 
-// MOUSE	
-var Mouse = {
-	x: canvas.width/2,
-	y: canvas.height/2
-};
-canvas.onmousemove = function(event){	
-	Mouse.x = event.clientX;
-	Mouse.y = event.clientY;
-	updateCanvas = true;
-};
+function tx(t, w, h, f, s) {
+    c.textAlign = 'center';
+    c.fillStyle = s;
+    c.font = f + 'vw Arial';
+    c.fillText(t, w, h);
+}
 
 </script>
