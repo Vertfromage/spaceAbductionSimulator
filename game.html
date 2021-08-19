@@ -16,6 +16,26 @@
 	</body>
 </html>
 <script>
+// initialize 2D a (c)
+// initialize game state (s)
+// initialize keys states (u,r,d,l for directions, k for all the keyboard)
+c = a.getContext`2d`, k = [u = r = d = l = s = 0]
+a.width = innerWidth;
+a.height = innerHeight;
+// (initialize your global variables here)
+c.w = innerWidth;
+c.h = innerHeight;
+// update u,l,d,r globals when an arrow key/wasd/zqsd is pressed or released
+// update k[keyCode] if any other key is pressed/released
+onkeydown = onkeyup = e => k[e.which] = self['lld*rlurdu'[e.which % 32 % 17]] = e.type[5];
+// Set up variables
+
+numnpcs = 50,
+    npcs = [];
+for (let i = 0; i < numnpcs; i += 1) {
+    spawnnpc();
+}
+
 // Find intersection of RAY & SEGMENT
 function getIntersection(ray,segment){
 
@@ -171,18 +191,7 @@ function findIntersect(angle, sightX, sightY){
 ///////////////////////////////////////////////////////
 
   
-// initialize 2D a (c)
-// initialize game state (s)
-// initialize keys states (u,r,d,l for directions, k for all the keyboard)
-c = a.getContext`2d`, k = [u = r = d = l = s = 0]
-a.width = innerWidth;
-a.height = innerHeight;
-// (initialize your global variables here)
-c.w = innerWidth;
-c.h = innerHeight;
-// update u,l,d,r globals when an arrow key/wasd/zqsd is pressed or released
-// update k[keyCode] if any other key is pressed/released
-onkeydown = onkeyup = e => k[e.which] = self['lld*rlurdu'[e.which % 32 % 17]] = e.type[5]
+
 
 // DRAWING
 var foreground = new Image();
@@ -330,7 +339,8 @@ setInterval(e => {
     switch (s) {
         case 0: title();
             break;
-        case 1: game();
+        case 1:
+			game();
             break;
     }
 }, 16)
@@ -342,7 +352,9 @@ setInterval(e => {
 onclick = e => {
     x = e.pageX; y = e.pageY;
     switch (s) {
-        case 0: s=1;
+        case 0:
+			dropnpc();
+			s=1;
             break;
         case 1: ;
             break;
@@ -369,6 +381,18 @@ function title() {
 function game(){
 	draw();
 	tx("Space Invasion Simulator", c.w / 2, c.h/10, 2, '#a4f3f4');
+	spriteCollisions();
+	for (i = 0; i < npcs.length; i++) {
+		for (let j = 0; j < npcs.length; j++) {
+			if(npcs[i].isClose(npcs[j].x,npcs[j].x,4)){
+				npcs[i].s.x = npcs[j].s.x;
+				npcs[i].s.y = npcs[j].s.y;
+			}
+		}
+		npcs[i].move();
+        npcs[i].update();
+        npcs[i].render();
+    }
 }
 
 
@@ -392,5 +416,226 @@ function tx(t, w, h, f, s) {
     c.font = f + 'vw Arial';
     c.fillText(t, w, h);
 }
+/////////////////////////////////////////////
+// SPRITE STUFF
 
+function sprite(options) {
+
+var that = {},
+	frameIndex = 0,
+	tickCount = 0,
+	spot = 0,
+	ticksPerFrame = options.ticksPerFrame || 0,
+	numberOfFrames = options.numberOfFrames || 1;
+
+that.context = options.context;
+that.w = options.width;
+that.h = options.height;
+that.x = options.x;
+that.y = options.y;
+that.image = options.image;
+that.scaleRatio = 1;
+that.s = options.s;
+that.seq = [];
+
+that.newSeq = function (seq) {
+	spot = 0;
+	frameIndex = 0;
+	that.seq = seq;
+};
+
+that.switch = function (x) {
+	frameIndex = x;
+}
+
+that.update = function () {
+
+	tickCount += 1;
+
+	if (tickCount > ticksPerFrame) {
+
+		tickCount = 0;
+
+		// If the current frame index is in range
+		if (frameIndex < numberOfFrames - 1) {
+			// Go to the next frame
+			frameIndex += 1;
+			if (that.seq.length > 0) {
+				frameIndex = that.seq[spot];
+				spot += 1;
+			}
+		} else if (that.seq.length < 1) {
+			frameIndex = 0;
+		}
+		if (spot > that.seq.length - 1) {
+			spot = 0;
+		}
+	}
+};
+that.render = function () {
+	that.context.shadowOffsetX = 1;
+	that.context.shadowOffsetY = 1;
+	that.context.shadowColor = "black";
+	that.context.shadowBlur = 1;
+
+	// Draw the animation
+	that.context.drawImage(
+		that.image,
+		frameIndex * that.w / numberOfFrames,
+		0,
+		that.w / numberOfFrames,
+		that.h,
+		that.x,
+		that.y,
+		that.w / numberOfFrames * that.scaleRatio,
+		that.h * that.scaleRatio,
+	);
+};
+that.getFrameWidth = function () {
+	return that.w / numberOfFrames;
+};
+that.isClose = function (x, y, t) {
+	var dx = (that.x + that.getFrameWidth() / 2 * that.scaleRatio) - (x + that.getFrameWidth() / 2),
+		dy = (that.y + that.getFrameWidth() / 2 * that.scaleRatio) - (y + that.getFrameWidth() / 2);
+
+	var dist = Math.sqrt(dx * dx + dy * dy);
+
+	if (dist < that.getFrameWidth() * that.scaleRatio * t) {
+		return true;
+	} else {
+		return false;
+	}
+}
+that.move = function(){
+	that.x+= that.s.x;
+	that.y+= that.s.y;
+	if(that.x>c.w-3){
+		that.x = 5;
+	}
+	if(that.y>c.h-3){
+		that.y = 5;
+	}
+	if(that.x<3){
+		that.x = c.w-5;
+	}
+	if(that.y<3){
+		that.y = c.h-5;
+	}
+}
+return that;
+}
+// End sprite function
+
+function makeSprite(c, w, h, img, f, t, x, y, r, s) {
+let i = new Image();
+sp = sprite({
+	context: c,
+	width: w,
+	height: h,
+	image: i,
+	numberOfFrames: f,
+	ticksPerFrame: t,
+	s: s
+});
+sp.x = x;
+sp.y = y;
+sp.scaleRatio = r;
+i.src = img;
+return sp;
+}
+
+function spawnnpc() {
+    let i = npcs.length;
+    npcs[i] = makeSprite(c, 168, 22, "man3.png", 6, 10, 0, 0, 1, {x:2,y:1});
+    npcs[i].dead = false;
+	npcs[i].newSeq([0, 0, 1, 1, 2, 2, 1, 1]);
+}
+
+function dropnpc(){
+	let rX;
+	let rY; 
+	for (i = 0; i < npcs.length; i++) {
+		rX = Math.random()*c.w;
+		rY = Math.random()*c.h;
+		npcs[i].x = rX;
+		npcs[i].y = rY;
+		if(i%2==0){
+			npcs[i].s.y=-2;
+		}
+	}
+	// Add code to check if inside polygon
+}
+
+function minDistance( A,  B,  E)
+{
+ 
+    // vector AB
+    var AB=[];
+    AB.push (B[0] - A[0]);
+    AB.push(B[1] - A[1]);
+ 
+    // vector BP
+    var BE=[];
+    BE.push(E[0] - B[0]);
+    BE.push(E[1] - B[1]);
+ 
+    // vector AP
+   var AE=[];
+    AE.push(E[0] - A[0]),
+    AE.push(E[1] - A[1]);
+ 
+    // Variables to store dot product
+    var AB_BE, AB_AE;
+ 
+    // Calculating the dot product
+    AB_BE=(AB[0] * BE[0] + AB[1] * BE[1]);
+    AB_AE=(AB[0] * AE[0] + AB[1] * AE[1]);
+ 
+    // Minimum distance from
+    // point E to the line segment
+    var reqAns = 0;
+ 
+    // Case 1
+    if (AB_BE > 0) {
+ 
+        // Finding the magnitude
+        var y = E[1] - B[1];
+        var x = E[0] - B[0];
+        reqAns = Math.sqrt(x * x + y * y);
+    }
+ 
+    // Case 2
+    else if (AB_AE < 0) {
+        var y = E[1] - A[1];
+        var x = E[0] - A[0];
+        reqAns = Math.sqrt(x * x + y * y);
+    }
+ 
+    // Case 3
+    else {
+ 
+        // Finding the perpendicular distance
+       var x1 = AB[0];
+        var y1 = AB[1];
+       var x2 = AE[0];
+        var y2 = AE[1];
+        var mod = Math.sqrt(x1 * x1 + y1 * y1);
+        reqAns = Math.abs(x1 * y2 - y1 * x2) / mod;
+    }
+    return reqAns;
+}
+
+ 
+function spriteCollisions(){
+	for(i=0;i<segments.length;i++){
+		for(let j=0;j<npcs.length;j++){
+			if(minDistance([segments[i].a.x,segments[i].a.y],
+				[segments[i].b.x,segments[i].b.y],
+				[npcs[j].x,npcs[j].y])<3){
+					npcs[j].s.x=-npcs[j].s.x;
+					npcs[j].s.y= npcs[j].s.y;
+				}
+		}
+	}	
+}
 </script>
