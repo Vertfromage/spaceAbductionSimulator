@@ -1,6 +1,8 @@
 <!doctype>
 <!-- Tutorial for rays: ncase.me/sight-and-light -->
 <!-- Little svg's https://codepen.io/collection/DRMKdB?cursor=ZD0wJm89MCZwPTEmdj00 -->
+<!-- https://www.geeksforgeeks.org/minimum-distance-from-a-point-to-the-line-segment-using-vectors/ -->
+<!-- https://lvlupper.itch.io/top-down-rpg-template -->
 <html>
 		<head><meta charset="utf-8" />
 		<style>
@@ -11,7 +13,7 @@
 		</style>
 		</head> 
 		<body style="margin:0;overflow: hidden;">
-			<canvas id=a>   
+			<canvas id=canvas>   
 			</canvas>
 	</body>
 </html>
@@ -19,9 +21,9 @@
 // initialize 2D a (c)
 // initialize game state (s)
 // initialize keys states (u,r,d,l for directions, k for all the keyboard)
-c = a.getContext`2d`, k = [u = r = d = l = s = 0]
-a.width = innerWidth;
-a.height = innerHeight;
+c = canvas.getContext`2d`, k = [u = r = d = l = s = 0]
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 // (initialize your global variables here)
 c.w = innerWidth;
 c.h = innerHeight;
@@ -29,9 +31,10 @@ c.h = innerHeight;
 // update k[keyCode] if any other key is pressed/released
 onkeydown = onkeyup = e => k[e.which] = self['lld*rlurdu'[e.which % 32 % 17]] = e.type[5];
 // Set up variables
-
-numnpcs = 50,
-    npcs = [];
+var nextMove=0,
+rayXY =[];
+numnpcs = 500;
+npcs = [];
 for (let i = 0; i < numnpcs; i += 1) {
     spawnnpc();
 }
@@ -196,13 +199,11 @@ function findIntersect(angle, sightX, sightY){
 // DRAWING
 var foreground = new Image();
 foreground.src = "AlienRay.svg"
-var background = new Image();
-background.src = "background.svg"
 
 function draw(){
 
 	// Clear a
-	c.clearRect(0,0,a.width,a.height);
+	c.clearRect(0,0,canvas.width,canvas.height);
 
 	// Sight Polygons
 	var fuzzyRadius = 10;
@@ -252,12 +253,14 @@ function draw(){
 function drawPolygon(polygon,c,fillStyle){
 	c.fillStyle = fillStyle;
 	c.beginPath();
-	adjust = findAdjust(SpaceRay.x,SpaceRay.y,polygon[0].x,polygon[0].y);
+	let adjust = findAdjust(SpaceRay.x,SpaceRay.y,polygon[0].x,polygon[0].y);
+	rayXY[0]=adjust;
 	c.moveTo(adjust.x,adjust.y);
 	for(var i=1;i<polygon.length;i++){
 		var intersect = polygon[i];
 		adjust = findAdjust(SpaceRay.x,SpaceRay.y,intersect.x,intersect.y);
 		c.lineTo(adjust.x,adjust.y);
+		rayXY[i] = adjust;
 	}
 	c.fill();
 }
@@ -335,7 +338,7 @@ randomPolygons(segments);
 // start game loop (60fps)
 // the canvas is cleared and adjusted to fullscreen at each frame
 setInterval(e => {
-    a.width = innerWidth, a.height = innerHeight;
+    canvas.width = innerWidth, canvas.height = innerHeight;
     switch (s) {
         case 0: title();
             break;
@@ -362,8 +365,9 @@ onclick = e => {
 }
 
 function title() {
-    c.w = a.width;
-    c.h = a.height;
+    c.w = canvas.width;
+    c.h = canvas.height;
+	rayMove();
 	draw();
 
 	c.fillStyle = '#4B0082';
@@ -379,8 +383,8 @@ function title() {
 }
 
 function game(){
+	rayMove();
 	draw();
-	tx("Space Invasion Simulator", c.w / 2, c.h/10, 2, '#a4f3f4');
 	spriteCollisions();
 	for (i = 0; i < npcs.length; i++) {
 		for (let j = 0; j < npcs.length; j++) {
@@ -393,22 +397,9 @@ function game(){
         npcs[i].update();
         npcs[i].render();
     }
+	rayKill();
+	tx("Space Invasion Simulator", c.w / 2, c.h/10, 3, '#a4f3f4');
 }
-
-
-
-
-// SpaceRay	
-var SpaceRay = {
-	x: a.width/2,
-	y: a.height/2
-};
-// TODO replace with automated movement
-a.onmousemove = function(event){	
-	SpaceRay.x = event.clientX;
-	SpaceRay.y = event.clientY;
-	updatea = true;
-};
 
 function tx(t, w, h, f, s) {
     c.textAlign = 'center';
@@ -437,6 +428,7 @@ that.image = options.image;
 that.scaleRatio = 1;
 that.s = options.s;
 that.seq = [];
+that.dead = false;
 
 that.newSeq = function (seq) {
 	spot = 0;
@@ -546,9 +538,9 @@ return sp;
 
 function spawnnpc() {
     let i = npcs.length;
-    npcs[i] = makeSprite(c, 168, 22, "man3.png", 6, 10, 0, 0, 1, {x:2,y:1});
+    npcs[i] = makeSprite(c, 750, 50, "white_sprite.png", 15, 10, 0, 0, .5, {x:2,y:1});
     npcs[i].dead = false;
-	npcs[i].newSeq([0, 0, 1, 1, 2, 2, 1, 1]);
+	npcs[i].newSeq([0, 0, 1, 1, 2, 2, 3, 3]);
 }
 
 function dropnpc(){
@@ -559,13 +551,16 @@ function dropnpc(){
 		rY = Math.random()*c.h;
 		npcs[i].x = rX;
 		npcs[i].y = rY;
-		if(i%2==0){
-			npcs[i].s.y=-2;
-		}
+		// random # between -1.5 and 1.5
+		npcs[i].s.x = randomS();
+		npcs[i].s.y = randomS();
 	}
 	// Add code to check if inside polygon
 }
 
+function randomS(){
+	return Math.random() * 3 - 1.5;
+}
 function minDistance( A,  B,  E)
 {
  
@@ -593,25 +588,28 @@ function minDistance( A,  B,  E)
  
     // Minimum distance from
     // point E to the line segment
-    var reqAns = 0;
+    var nearDist = 0;
+	var nearPoint = [0,0];
  
-    // Case 1
+    // Case 1 - B is nearest point
     if (AB_BE > 0) {
  
         // Finding the magnitude
         var y = E[1] - B[1];
         var x = E[0] - B[0];
-        reqAns = Math.sqrt(x * x + y * y);
+        nearDist = Math.sqrt(x * x + y * y);
+		nearPoint = [B[0],B[1]];
     }
  
-    // Case 2
+    // Case 2 - A is nearest point
     else if (AB_AE < 0) {
         var y = E[1] - A[1];
         var x = E[0] - A[0];
-        reqAns = Math.sqrt(x * x + y * y);
+        nearDist = Math.sqrt(x * x + y * y);
+		nearPoint = [A[0],A[1]];
     }
  
-    // Case 3
+    // Case 3 - perpendicular 
     else {
  
         // Finding the perpendicular distance
@@ -620,22 +618,88 @@ function minDistance( A,  B,  E)
        var x2 = AE[0];
         var y2 = AE[1];
         var mod = Math.sqrt(x1 * x1 + y1 * y1);
-        reqAns = Math.abs(x1 * y2 - y1 * x2) / mod;
+        nearDist = Math.abs(x1 * y2 - y1 * x2) / mod;
+		nearPoint = {x:A[0]+AB_AE*AB[0],y:A[1]+AB_AE*AB[1]};
     }
-    return reqAns;
+	var info = [nearDist,nearPoint]
+    return info;
 }
 
- 
+// Check if colliding with polygon 
 function spriteCollisions(){
+	var info=[];
+	var bump = Math.random()*3+3;
 	for(i=0;i<segments.length;i++){
 		for(let j=0;j<npcs.length;j++){
-			if(minDistance([segments[i].a.x,segments[i].a.y],
-				[segments[i].b.x,segments[i].b.y],
-				[npcs[j].x,npcs[j].y])<3){
-					npcs[j].s.x=-npcs[j].s.x;
-					npcs[j].s.y= npcs[j].s.y;
+			info = minDistance([segments[i].a.x,segments[i].a.y],
+				[segments[i].b.x,segments[i].b.y],[npcs[j].x,npcs[j].y]);
+			if(info[0]<1){
+				if((npcs[j].x - info[1].x)<0){
+					npcs[j].x = npcs[j].x-bump;
+				}else{
+					npcs[j].x = npcs[j].x+bump;
+				}
+				if((npcs[j].y - info[1].y)<0){
+					npcs[j].y = npcs[j].y-bump;
+				}else{
+					npcs[j].y = npcs[j].y+bump;
+				}
+				if(npcs[j].s.x>npcs[j].s.y){
+						npcs[j].s.y=-npcs[j].s.y+.6;
+						npcs[j].s.x=npcs[j].s.x*.6;
+				}else{
+						npcs[j].s.x=-npcs[j].s.x+.6;
+						npcs[j].s.y=npcs[j].s.y*.6;
+				}
 				}
 		}
 	}	
+}
+
+// *** SpaceRay	***
+var SpaceRay = {
+	x: c.w/2,
+	y: c.h/2,
+	sX:randomS()*5,
+	sY:randomS()*5,
+};
+
+function rayMove(){
+	if(nextMove>200){
+		SpaceRay.sX = randomS()*5;
+		SpaceRay.sY = randomS()*5;
+		nextMove =0;
+	}else nextMove += Math.random()*5;
+	SpaceRay.x+=SpaceRay.sX;
+	SpaceRay.y+=SpaceRay.sY;
+	if(SpaceRay.x>c.w-10||SpaceRay.x<10){
+		SpaceRay.sX=-SpaceRay.sX;
+	}if(SpaceRay.y>c.h-10||SpaceRay.y<10){
+		SpaceRay.sY=-SpaceRay.sY;
+	}
+}
+
+//Note: works but slow, need faster solution
+function rayKill(){
+	for(i=0;i<rayXY.length;i+=12){
+		for(let j=0;j<npcs.length;j++){
+			if(!npcs[j].dead){
+			 if(isTouchingRay(rayXY[i],[npcs[j].x,npcs[j].y])){
+				npcs[j].dead = true;
+				//npcs[i].newSeq([0]);
+			}
+		}
+		}
+	}
+}
+
+function isTouchingRay(rayEndPoint,npcsPoint){
+	let result = minDistance([SpaceRay.x,SpaceRay.y],
+				[rayEndPoint.x,rayEndPoint.y],[npcsPoint[0],npcsPoint[1]]);
+	if(result[0]<=1){
+		return true;
+	}else{
+		return false;
+	}
 }
 </script>
