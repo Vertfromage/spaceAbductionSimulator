@@ -47,10 +47,9 @@ reload=true,
 win=false,
 stopTime=0,
 errorReset=0;
-var longest= localStorage.getItem('longTime')||0;
 var shortest = localStorage.getItem('shortTime')||0;
 var nSims = localStorage.getItem('nSims')||0;
-var total = localStorage.getItem('total')||0;
+
 
 //width of spritesheet divided by #frames times scale
 npcsSize = (750/15)*.5/2;
@@ -172,8 +171,8 @@ function getSightPolygon(sightX,sightY){
 		if(!(closestIntersect== null)){
 		// Add to list of intersects
 		intersects.push(closestIntersect);}else{
-			console.log("Something went wrong, sorry reset game!");
-			console.log("null value! Ray location: "+SpaceRay.x+","+SpaceRay.y);
+			//console.log("Something went wrong, sorry reset game!");
+			//console.log("null value! Ray location: "+SpaceRay.x+","+SpaceRay.y);
 			errorReset++;
 			reset();
 			break;
@@ -226,7 +225,7 @@ foreground.src = "AlienRay.svg"
 
 function draw(){
 
-	// Clear a
+	// Clear
 	c.clearRect(0,0,canvas.width,canvas.height);
 
 	if(rayLength>10){
@@ -308,16 +307,15 @@ function findAdjust(x1,y1,x2,y2){
 }
 
 // LINE SEGMENTS
-var segments = [
-
-	// Border
-	{a:{x:0,y:0}, b:{x:c.w,y:0}, s:1},
-	{a:{x:c.w,y:0}, b:{x:c.w,y:c.h}, s:2},
-	{a:{x:c.w,y:c.h}, b:{x:0,y:c.h}, s:3},
-	{a:{x:0,y:c.h}, b:{x:0,y:0}, s:4},
-];
+var segments = [];
 
 function randomPolygons(polygon){
+	//Border
+	polygon.push({a:{x:0,y:0}, b:{x:c.w,y:0}, s:1});
+	polygon.push({a:{x:c.w,y:0}, b:{x:c.w,y:c.h}, s:2});
+	polygon.push({a:{x:c.w,y:c.h}, b:{x:0,y:c.h}, s:3});
+	polygon.push({a:{x:0,y:c.h}, b:{x:0,y:0}, s:4});
+
 	let m1,m2,m3,m4,m5,m6;
 	m1=0;m2=0;
 	let s1 = c.w/7;
@@ -350,6 +348,7 @@ randomPolygons(segments);
 // the canvas is cleared and adjusted to fullscreen at each frame
 setInterval(e => {
     canvas.width = innerWidth, canvas.height = innerHeight;
+	c.w=canvas.width, c.h = canvas.height;
     switch (s) {
         case 0: title();
             break;
@@ -377,6 +376,7 @@ onclick = e => {
 			dropnpc();
 			startTime = Math.floor(Date.now() / 1000); //Get the starting time (right now) in seconds
 			count = numnpcs;
+			errorReset=0;
 			s=1;
             break;
         case 1: scatter(x,y);
@@ -404,13 +404,17 @@ const mouse = {
   y: null,
 };
 
+const plane = new Image();
+plane.src = "plane.png";
+
 const hero = {
   x: 100,
   y: 100,
-  w: 15,
-  h: 50,
+  w: 58,
+  h: 62,
   angle: 0,
   dead: false,
+  img: plane
 }
 
 // This keeps it from adjusting distance too frequently
@@ -427,9 +431,9 @@ class Laser{
 	}
 	
 	draw(){
-		c.fillStyle = "#ff26267f"; // Red color
+		c.fillStyle = "#f00"; // Red color
     	c.beginPath(); //Start path
-    	c.arc(this.x, this.y, 3, 0, Math.PI * 2, true); // Draw a point using the arc function of the canvas with a point structure.
+    	c.arc(this.x, this.y, 2.5, 0, Math.PI * 2, true); // Draw a point using the arc function of the canvas with a point structure.
     	c.fill(); // Close the path and fill.
 	};
 
@@ -440,7 +444,6 @@ class Laser{
 			this.outOfBounds=true;
 		}
 		if(this.isClose(SpaceRay.x,SpaceRay.y,30)){
-			console.log("Close to ray center");
 			rayLength-=10;
 			this.outOfBounds=true;
 		}
@@ -512,21 +515,9 @@ function drawhero(hero)
   // 3. Use hero's angle to rotate its "sprite"
   c.rotate(hero.angle);
   
-  c.fillStyle = '#FFF';
   var x = -(hero.w/2);
   var y = -(hero.h/2);
-  c.fillRect(x, y, hero.w, hero.h);
-  c.fillRect(hero.w/2, -5, 10, 10);
-  c.fillRect(-hero.w-15, -4, 25, 8);
-  c.fillRect(-hero.w-15, -8, 3, 16);
-  c.fillStyle = '#F00';
-  c.fillRect(-hero.w-12, -4, 3, 8);
-  c.fillRect(-hero.w-6, -4, 3, 8);
-  c.fillRect(x, y+4, hero.w, hero.h/7);
-  c.fillRect(x, y+hero.h-12, hero.w, hero.h/7);
-  c.fillStyle = '#000';
-  c.fillRect(hero.w/2, -5, 3, 10);
-  c.fillRect(-hero.w/2-3, -4, 3, 8);
+  c.drawImage(hero.img,x,y,hero.w,hero.h);
   c.restore();
 }
 
@@ -568,14 +559,14 @@ function title() {
 	rayMove();
 	draw();
 
-	if(longest!=0||shortest!=0){
+	if(shortest!=0){
 		c.fillStyle = '#0000007f';
     	c.fillRect(0, 0, c.w, c.h/10);
 		tx("Simulations: "+nSims, c.w / 5, c.h/15, 3, '#a4f3f4');
 		if(stopTime>0){
-		tx("Time: "+displayTime(stopTime)+"  Shortest: "+displayTime(shortest)+"  Longest: "+displayTime(longest),c.w *.6, c.h/15, 3, '#a4f3f4');
+		tx("Time: "+displayTime(stopTime)+"  Fastest: "+displayTime(shortest),c.w *.6, c.h/15, 3, '#a4f3f4');
 		}else{
-			tx("Shortest: "+displayTime(shortest)+"  Longest: "+displayTime(longest),c.w *.7, c.h/15, 3, '#a4f3f4');
+			tx("Shortest: "+displayTime(shortest),c.w *.7, c.h/15, 3, '#a4f3f4');
 		}
 	}
 
@@ -1000,27 +991,22 @@ function reset(){
 	for(let j=0;j<npcs.length;j++){
 		npcs[j].dead=false;
 	}
-	
-	if(win&&stopTime>localStorage.getItem('longTime')){
-		localStorage.setItem('longTime', stopTime);
-		longest = stopTime;
-	}
 	if(localStorage.getItem('shortTime')==null||localStorage.getItem('shortTime')==0 && win){
 		localStorage.setItem('shortTime', stopTime);
 		shortest = stopTime;
-	}else if(stopTime<localStorage.getItem('shortTime')){
+	}else if(win && stopTime<localStorage.getItem('shortTime')){
 		localStorage.setItem('shortTime', stopTime);
 		shortest = stopTime;
 	}
-	total = total+stopTime;
 	localStorage.setItem("nSims", nSims);
-	localStorage.setItem("total", total);
 	s=0;
 	SpaceRay.x = c.w/2;
 	SpaceRay.y = c.h/2;
 	hero.dead =false;
 	reload=true;
 	rayLength=80;
+	segments = [];
+	randomPolygons(segments);
 }
 
 function scatter(x,y){
@@ -1034,4 +1020,10 @@ function scatter(x,y){
 		}
 	}
 }
+
+// Change values when window is resized
+window.onresize = function() {
+	       errorReset++;
+           reset();		   
+		};
 </script>

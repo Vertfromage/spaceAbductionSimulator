@@ -1,0 +1,9 @@
+TODO:
+
+- sound (shooting, ray changing directions)
+- music
+- Option to set difficulty
+- UI % saved.
+- share on twitter
+- make sure it works on firefox, mobile
+- something to do with special category
