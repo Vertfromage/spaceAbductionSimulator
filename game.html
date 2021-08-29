@@ -3,6 +3,9 @@
 <!-- Little svg's https://codepen.io/collection/DRMKdB?cursor=ZD0wJm89MCZwPTEmdj00 -->
 <!-- https://www.geeksforgeeks.org/minimum-distance-from-a-point-to-the-line-segment-using-vectors/ -->
 <!-- https://lvlupper.itch.io/top-down-rpg-template -->
+<!-- c.globalCompositeOperation = 'lighter'; Make a ghost? -->
+<!-- https://stackoverflow.com/a/36920906 timer -->
+<!-- https://youtu.be/eI9idPTT0c4?list=PLahViQwacq_JOlpMx0s9nv26ZGM-nMes6&t=1064 projectiles -->
 <html>
 		<head><meta charset="utf-8" />
 		<style>
@@ -32,9 +35,25 @@ c.h = innerHeight;
 onkeydown = onkeyup = e => k[e.which] = self['lld*rlurdu'[e.which % 32 % 17]] = e.type[5];
 // Set up variables
 var nextMove=0,
-rayXY =[];
-numnpcs = 500;
-npcs = [];
+rayXY =[],
+rayLength = 80,
+numnpcs = 1000,
+npcs = [],
+startTime,
+timer,
+count,
+reloadTime=0,
+reload=true,
+win=false,
+stopTime=0,
+errorReset=0;
+var longest= localStorage.getItem('longTime')||0;
+var shortest = localStorage.getItem('shortTime')||0;
+var nSims = localStorage.getItem('nSims')||0;
+var total = localStorage.getItem('total')||0;
+
+//width of spritesheet divided by #frames times scale
+npcsSize = (750/15)*.5/2;
 for (let i = 0; i < numnpcs; i += 1) {
     spawnnpc();
 }
@@ -150,10 +169,15 @@ function getSightPolygon(sightX,sightY){
 				closestIntersect=intersect;
 			}
 		}
-
+		if(!(closestIntersect== null)){
 		// Add to list of intersects
-		intersects.push(closestIntersect);
-
+		intersects.push(closestIntersect);}else{
+			console.log("Something went wrong, sorry reset game!");
+			console.log("null value! Ray location: "+SpaceRay.x+","+SpaceRay.y);
+			errorReset++;
+			reset();
+			break;
+		}
 	}
 
 
@@ -205,6 +229,8 @@ function draw(){
 	// Clear a
 	c.clearRect(0,0,canvas.width,canvas.height);
 
+	if(rayLength>10){
+
 	// Sight Polygons
 	var fuzzyRadius = 10;
 	var polygons = [getSightPolygon(SpaceRay.x,SpaceRay.y)];
@@ -219,6 +245,7 @@ function draw(){
 		drawPolygon(polygons[i],c,"rgba(255,255,255,0.2)");
 	}
 	drawPolygon(polygons[0],c,"#fff");
+}
 
     // Draw segments
 	c.strokeStyle = "#999";
@@ -235,6 +262,7 @@ function draw(){
 	c.drawImage(foreground,0,0);
 	c.globalCompositeOperation = "source-over";
 
+	if(rayLength>10){
 	// Draw dots
 	c.fillStyle = "#fff";
 	c.beginPath();
@@ -247,6 +275,7 @@ function draw(){
     	c.arc(SpaceRay.x+dx, SpaceRay.y+dy, 2, 0, 2*Math.PI, false);
     	c.fill();
     }
+}
 
 }
 
@@ -268,7 +297,7 @@ function drawPolygon(polygon,c,fillStyle){
 // This function finds endpoint for shorter ray.
 function findAdjust(x1,y1,x2,y2){
 	var actualDistance = Math.sqrt(((x2-x1)**2)+((y2-y1)**2));
-	var preferedDistance = 80;
+	var preferedDistance = rayLength;
 	var ratio = preferedDistance/actualDistance;
 	// Shorten unless line intersects within that distance
 	if(ratio>0 && ratio<1){
@@ -282,28 +311,10 @@ function findAdjust(x1,y1,x2,y2){
 var segments = [
 
 	// Border
-	{a:{x:0,y:0}, b:{x:c.w,y:0}},
-	{a:{x:c.w,y:0}, b:{x:c.w,y:c.h}},
-	{a:{x:c.w,y:c.h}, b:{x:0,y:c.h}},
-	{a:{x:0,y:c.h}, b:{x:0,y:0}},
-
-	// Polygon #3
-	{a:{x:200,y:260}, b:{x:220,y:150}},
-	{a:{x:220,y:150}, b:{x:300,y:200}},
-	{a:{x:300,y:200}, b:{x:350,y:320}},
-	{a:{x:350,y:320}, b:{x:200,y:260}},
-
-	// Polygon #5
-	{a:{x:650,y:190}, b:{x:760,y:170}},
-	{a:{x:760,y:170}, b:{x:740,y:270}},
-	{a:{x:740,y:270}, b:{x:630,y:290}},
-	{a:{x:630,y:290}, b:{x:650,y:190}},
-
-	// Polygon #6
-	{a:{x:600,y:95}, b:{x:780,y:50}},
-	{a:{x:780,y:50}, b:{x:680,y:150}},
-	{a:{x:680,y:150}, b:{x:600,y:95}}
-
+	{a:{x:0,y:0}, b:{x:c.w,y:0}, s:1},
+	{a:{x:c.w,y:0}, b:{x:c.w,y:c.h}, s:2},
+	{a:{x:c.w,y:c.h}, b:{x:0,y:c.h}, s:3},
+	{a:{x:0,y:c.h}, b:{x:0,y:0}, s:4},
 ];
 
 function randomPolygons(polygon){
@@ -318,12 +329,12 @@ function randomPolygons(polygon){
 			m3=rS()+m1;
 			m4=rS()+m2;
 			m5=rS()+m4;
-			polygon.push({a:{x:m1,y:m2}, b:{x:m3,y:m4}});
-			polygon.push({a:{x:m3,y:m4}, b:{x:m3,y:m5}});
+			polygon.push({a:{x:m1,y:m2}, b:{x:m3,y:m4}, s:1});
+			polygon.push({a:{x:m3,y:m4}, b:{x:m3,y:m5}, s:2});
 			m4=m3-rS();
 			m6=m5-rS()*.5;
-			polygon.push({a:{x:m3,y:m5}, b:{x:m4,y:m6}});
-			polygon.push({a:{x:m4,y:m6}, b:{x:m1,y:m2}});
+			polygon.push({a:{x:m3,y:m5}, b:{x:m4,y:m6}, s:3});
+			polygon.push({a:{x:m4,y:m6}, b:{x:m1,y:m2}, s:4});
 }}}
 	
 
@@ -344,7 +355,14 @@ setInterval(e => {
             break;
         case 1:
 			game();
+			if(isGameOver()){
+				stopTime=Math.floor(Date.now() / 1000)-startTime;
+				nSims++;
+				s=2};
             break;
+		case 2:
+			reset();
+			break;
     }
 }, 16)
 
@@ -357,12 +375,192 @@ onclick = e => {
     switch (s) {
         case 0:
 			dropnpc();
+			startTime = Math.floor(Date.now() / 1000); //Get the starting time (right now) in seconds
+			count = numnpcs;
 			s=1;
             break;
-        case 1: ;
+        case 1: scatter(x,y);
+				if(hero.dead||rayLength<=10){
+					if(x>c.w/3&&x<c.w/3*2){
+						if(y>c.h/3&&y<c.h-c.h/4){
+							stopTime=Math.floor(Date.now() / 1000)-startTime;
+							nSims++;
+							reset();
+						}
+					}
+				}
+				if(reload){
+					shootlaser(x,y);
+					reload=false;
+				}
             break;
     }
 }
+
+//*** Jet Fighter START ***
+timedMove=0;
+const mouse = {
+  x: null,
+  y: null,
+};
+
+const hero = {
+  x: 100,
+  y: 100,
+  w: 15,
+  h: 50,
+  angle: 0,
+  dead: false,
+}
+
+// This keeps it from adjusting distance too frequently
+var oldMouse={x:0,y:0};
+
+
+class Laser{
+	constructor(x,y,v){
+	
+		this.x = x;
+		this.y = y;
+		this.v = v;
+		this.outOfBounds = false;
+	}
+	
+	draw(){
+		c.fillStyle = "#ff26267f"; // Red color
+    	c.beginPath(); //Start path
+    	c.arc(this.x, this.y, 3, 0, Math.PI * 2, true); // Draw a point using the arc function of the canvas with a point structure.
+    	c.fill(); // Close the path and fill.
+	};
+
+	update(){
+		this.x += this.v.x*2;
+		this.y += this.v.y*2;
+		if(this.x>c.w||this.x<0||this.y>c.h||this.y<0){
+			this.outOfBounds=true;
+		}
+		if(this.isClose(SpaceRay.x,SpaceRay.y,30)){
+			console.log("Close to ray center");
+			rayLength-=10;
+			this.outOfBounds=true;
+		}
+	};
+
+	isClose(x, y, d){
+		var dist = Math.sqrt((this.x - x)**2 + (this.y - y)**2);
+		if (dist < d) {
+			return true;
+		} else {
+			return false;
+		}
+	};
+}
+
+const lasers = [];
+
+function destroyLaser (laser) {
+	for (var i = 0; i < lasers.length; i++) {
+		if (lasers[i] === laser) {
+			lasers[i] = null;
+			lasers.splice(i, 1);
+			break;
+		}
+	}
+}
+
+function shootlaser(x,y){
+	let velocity = getVelocity({x:hero.x,y:hero.y},{x:x,y:y});
+	lasers.push(new Laser( hero.x,hero.y, velocity));
+}
+
+function playLasers(){
+	lasers.forEach((laser)=>{
+		laser.update();
+		laser.draw();
+	})
+	lasers.forEach((laser)=>{
+		if(laser.outOfBounds){
+			destroyLaser(laser);
+		}
+	})
+}
+
+// uses radians
+function getVelocity(from,to){
+	var angle = Math.atan2(to.y-from.y,to.x-from.x);
+	var velocity = {
+		x: Math.cos(angle),
+		y: Math.sin(angle)
+	}
+	return velocity;
+}
+
+onmousemove = e => { 
+  var rect = canvas.getBoundingClientRect();
+  if(Math.abs(oldMouse.x-mouse.x)>c.w/6||Math.abs(oldMouse.y-mouse.y)>c.h/5){
+  oldMouse.x = mouse.x;
+  oldMouse.y = mouse.y;}
+  mouse.x = e.clientX - rect.left,
+  mouse.y = e.clientY - rect.top;
+}
+
+function drawhero(hero)
+{
+  c.save();
+  c.translate(hero.x, hero.y);
+  
+  // 3. Use hero's angle to rotate its "sprite"
+  c.rotate(hero.angle);
+  
+  c.fillStyle = '#FFF';
+  var x = -(hero.w/2);
+  var y = -(hero.h/2);
+  c.fillRect(x, y, hero.w, hero.h);
+  c.fillRect(hero.w/2, -5, 10, 10);
+  c.fillRect(-hero.w-15, -4, 25, 8);
+  c.fillRect(-hero.w-15, -8, 3, 16);
+  c.fillStyle = '#F00';
+  c.fillRect(-hero.w-12, -4, 3, 8);
+  c.fillRect(-hero.w-6, -4, 3, 8);
+  c.fillRect(x, y+4, hero.w, hero.h/7);
+  c.fillRect(x, y+hero.h-12, hero.w, hero.h/7);
+  c.fillStyle = '#000';
+  c.fillRect(hero.w/2, -5, 3, 10);
+  c.fillRect(-hero.w/2-3, -4, 3, 8);
+  c.restore();
+}
+
+function drawFighterJet() {
+
+  /// 1. --- GET THE ANGLE
+  LookAt(hero, mouse.x, mouse.y);
+  
+  /// 2. --- Rotate the hero and draw
+  drawhero(hero);
+}
+
+function LookAt(hero, dx, dy)
+{
+  // angle between 2 points
+  hero.angle = Math.atan2(dy - hero.y, dx - hero.x);
+}
+
+function moveJet(){
+  // if hero.x - oldMouse.x
+  if(hero.x-oldMouse.x>1){
+    hero.x--;
+  }else if(hero.x-oldMouse.x<-1){
+    hero.x++;
+  }
+  if(hero.y-oldMouse.y>1){
+    hero.y--;
+  }else if(hero.y-oldMouse.y<-1){
+    hero.y++;
+  }
+}
+
+
+//Jet Fighter END
 
 function title() {
     c.w = canvas.width;
@@ -370,25 +568,65 @@ function title() {
 	rayMove();
 	draw();
 
+	if(longest!=0||shortest!=0){
+		c.fillStyle = '#0000007f';
+    	c.fillRect(0, 0, c.w, c.h/10);
+		tx("Simulations: "+nSims, c.w / 5, c.h/15, 3, '#a4f3f4');
+		if(stopTime>0){
+		tx("Time: "+displayTime(stopTime)+"  Shortest: "+displayTime(shortest)+"  Longest: "+displayTime(longest),c.w *.6, c.h/15, 3, '#a4f3f4');
+		}else{
+			tx("Shortest: "+displayTime(shortest)+"  Longest: "+displayTime(longest),c.w *.7, c.h/15, 3, '#a4f3f4');
+		}
+	}
+
 	c.fillStyle = '#4B0082';
     c.fillRect(c.w/4, c.h/3, c.w/2, c.h/2);
 	c.fillStyle = '#000000';
     c.fillRect(c.w/4+10, c.h/3+10, c.w/2-20, c.h/2-20);
     
     tx("Space Invasion Simulator", c.w / 2, c.h * .55, 4, '#a4f3f4');
-    tx("Save the tiny humans from mass casualties!", c.w / 2, c.h * .62, 1.7, '#a4f3f4');
+    tx("Protect them or be witness to their doom!", c.w / 2, c.h * .62, 2, '#a4f3f4');
+	tx("Click to fire and scatter panicked crowds.", c.w / 2, c.h * .68, 1.7, '#a4f3f4');
+
+	if(errorReset!=0){
+		tx("Appologies, ERROR in space transmission of invasion simulaton, RESTART REQUIRED.",
+		c.w*.5,c.h*.9, 1.7, '#ff0000');
+	}
     
     tx('CLICK TO START!', c.w /2, c.h * .75, 1.5, '#a4f3f4');
 
 }
 
+function startTimeCounter() {
+    var now = Math.floor(Date.now() / 1000); // get the time now
+    var diff = now - startTime; // diff in seconds between now and start
+    timer = displayTime(diff); // update the element where the timer will appear
+    var t = setTimeout(startTimeCounter, 500); // set a timeout to update the timer
+}
+function displayTime(diff){
+	var m = Math.floor(diff / 60); // get minutes value (quotient of diff)
+    var s = Math.floor(diff % 60); // get seconds value (remainder of diff)
+    //m = checkTime(m); // add a leading zero if it's single digit
+    s = checkTime(s); // add a leading zero if it's single digit
+    return m + ":" + s; // update the element where the timer will appear
+}
+
+startTime = Math.floor(Date.now() / 1000); //Get the starting time (right now) in seconds
+startTimeCounter();
+
+function checkTime(i) {
+    if (i < 10) {i = "0" + i};  // add zero in front of numbers < 10
+    return i;
+}
+
 function game(){
-	rayMove();
 	draw();
 	spriteCollisions();
 	for (i = 0; i < npcs.length; i++) {
+		// To make npcs follow each other
+		if(!npcs[i].dead){
 		for (let j = 0; j < npcs.length; j++) {
-			if(npcs[i].isClose(npcs[j].x,npcs[j].x,4)){
+			if(!npcs[j].dead && npcs[i].isClose(npcs[j].x,npcs[j].x,4)){
 				npcs[i].s.x = npcs[j].s.x;
 				npcs[i].s.y = npcs[j].s.y;
 			}
@@ -396,9 +634,45 @@ function game(){
 		npcs[i].move();
         npcs[i].update();
         npcs[i].render();
+		if(!hero.dead){
+			drawFighterJet();
+		
+		if(timedMove>200){
+		moveJet();
+		timedMove=0;
+
+		if(lasers.length>0){
+		  playLasers();
+		}
+		}
+		timedMove++;
+		}
+		// not sure it's an improvement
+		if(reloadTime>25000){
+			reload=true;
+			reloadTime=0;
+		}
+	
+		reloadTime++;
+		
+	}
     }
-	rayKill();
-	tx("Space Invasion Simulator", c.w / 2, c.h/10, 3, '#a4f3f4');
+	if(rayLength>10){
+		rayMove();
+		rayKill();
+	}else{
+		restartButton(0);
+	}
+	c.fillStyle = '#0000007f';
+    c.fillRect(0, 0, c.w, c.h/12);
+	tx("Space Invasion Simulator", c.w / 5, c.h/15, 3, '#a4f3f4');
+	tx("Population: "+count+"  Timer: "+timer, c.w*.6, c.h/15, 3, '#a4f3f4');
+	if(!reload){
+			tx("Charging gun...", c.w*.9, c.h/15, 2, 'F00');
+		}
+	if(hero.dead){
+			restartButton(1);
+		}
 }
 
 function tx(t, w, h, f, s) {
@@ -406,6 +680,21 @@ function tx(t, w, h, f, s) {
     c.fillStyle = s;
     c.font = f + 'vw Arial';
     c.fillText(t, w, h);
+}
+
+function restartButton(result){
+	c.fillStyle = '#000000df';
+	c.fillRect(c.w/3, c.h/3, c.w/3, c.h/4);
+	if(result==1){
+	tx("Hero dead", c.w / 2, c.h*.4, 3, '#a4f3f4');
+	tx("Invasion continues as planned.", c.w / 2, c.h*.45, 2, '#a4f3f4');
+	tx("Click here to restart!", c.w / 2, c.h*.55, 2, '#a4f3f4');
+}else{
+	win=true;
+	tx("Hero destroys ray", c.w / 2, c.h*.4, 3, '#a4f3f4');
+	tx("Invasion halted!", c.w / 2, c.h*.45, 2, '#a4f3f4');
+	tx("Click here to restart!", c.w / 2, c.h*.55, 2, '#a4f3f4');
+}
 }
 /////////////////////////////////////////////
 // SPRITE STUFF
@@ -438,7 +727,7 @@ that.newSeq = function (seq) {
 
 that.switch = function (x) {
 	frameIndex = x;
-}
+};
 
 that.update = function () {
 
@@ -465,11 +754,6 @@ that.update = function () {
 	}
 };
 that.render = function () {
-	that.context.shadowOffsetX = 1;
-	that.context.shadowOffsetY = 1;
-	that.context.shadowColor = "black";
-	that.context.shadowBlur = 1;
-
 	// Draw the animation
 	that.context.drawImage(
 		that.image,
@@ -497,23 +781,23 @@ that.isClose = function (x, y, t) {
 	} else {
 		return false;
 	}
-}
+};
 that.move = function(){
 	that.x+= that.s.x;
 	that.y+= that.s.y;
-	if(that.x>c.w-3){
-		that.x = 5;
+	if(that.x>c.w-npcsSize*2){
+		that.x = 3;
 	}
-	if(that.y>c.h-3){
-		that.y = 5;
+	if(that.y>c.h-npcsSize*2){
+		that.y = 3;
 	}
-	if(that.x<3){
-		that.x = c.w-5;
+	if(that.x<1){
+		that.x = c.w-npcsSize*2;
 	}
-	if(that.y<3){
-		that.y = c.h-5;
+	if(that.y<1){
+		that.y = c.h-npcsSize*2;
 	}
-}
+};
 return that;
 }
 // End sprite function
@@ -538,7 +822,7 @@ return sp;
 
 function spawnnpc() {
     let i = npcs.length;
-    npcs[i] = makeSprite(c, 750, 50, "white_sprite.png", 15, 10, 0, 0, .5, {x:2,y:1});
+    npcs[i] = makeSprite(c, 200, 50, "white_sprite.png", 4, 10, 0, 0, .5, {x:2,y:1});
     npcs[i].dead = false;
 	npcs[i].newSeq([0, 0, 1, 1, 2, 2, 3, 3]);
 }
@@ -561,96 +845,70 @@ function dropnpc(){
 function randomS(){
 	return Math.random() * 3 - 1.5;
 }
+
 function minDistance( A,  B,  E)
 {
- 
-    // vector AB
-    var AB=[];
-    AB.push (B[0] - A[0]);
-    AB.push(B[1] - A[1]);
- 
-    // vector BP
-    var BE=[];
-    BE.push(E[0] - B[0]);
-    BE.push(E[1] - B[1]);
- 
-    // vector AP
-   var AE=[];
-    AE.push(E[0] - A[0]),
-    AE.push(E[1] - A[1]);
- 
-    // Variables to store dot product
-    var AB_BE, AB_AE;
- 
-    // Calculating the dot product
-    AB_BE=(AB[0] * BE[0] + AB[1] * BE[1]);
-    AB_AE=(AB[0] * AE[0] + AB[1] * AE[1]);
- 
-    // Minimum distance from
-    // point E to the line segment
-    var nearDist = 0;
-	var nearPoint = [0,0];
- 
-    // Case 1 - B is nearest point
-    if (AB_BE > 0) {
- 
-        // Finding the magnitude
-        var y = E[1] - B[1];
-        var x = E[0] - B[0];
-        nearDist = Math.sqrt(x * x + y * y);
-		nearPoint = [B[0],B[1]];
-    }
- 
-    // Case 2 - A is nearest point
-    else if (AB_AE < 0) {
-        var y = E[1] - A[1];
-        var x = E[0] - A[0];
-        nearDist = Math.sqrt(x * x + y * y);
-		nearPoint = [A[0],A[1]];
-    }
- 
-    // Case 3 - perpendicular 
-    else {
- 
-        // Finding the perpendicular distance
-       var x1 = AB[0];
-        var y1 = AB[1];
-       var x2 = AE[0];
-        var y2 = AE[1];
-        var mod = Math.sqrt(x1 * x1 + y1 * y1);
-        nearDist = Math.abs(x1 * y2 - y1 * x2) / mod;
-		nearPoint = {x:A[0]+AB_AE*AB[0],y:A[1]+AB_AE*AB[1]};
-    }
-	var info = [nearDist,nearPoint]
-    return info;
+	let p1 = {x: A[0],y: A[1]};
+	let p2 = {x: B[0],y: B[1]};
+	let p3 = {x: E[0],y: E[1]};
+
+	var xDelta = p2.x - p1.x;
+	var yDelta = p2.y - p1.y;
+	
+	if( xDelta==0 && yDelta==0){
+		console.log("Error p1 and p2 cannot be same point!");
+		return;
+	}
+	let bottom = xDelta*xDelta + yDelta*yDelta;
+	let top = (p3.x - p1.x)*xDelta + (p3.y-p1.y)*yDelta
+	let u = top/bottom;
+	
+	if(u<0){
+		closestPoint = p1;
+	}else if(u>1){
+		closestPoint = p2;
+	}else{
+		closestPoint = {x: p1.x+ u*xDelta,y:p1.y+u*yDelta};
+	}
+	
+	let distance = getDistance(closestPoint.x,closestPoint.y,p3.x,p3.y);
+
+	return [distance, closestPoint];
+}
+
+function getDistance(x1, y1, x2, y2){
+    let y = x2 - x1;
+    let x = y2 - y1;
+    
+    return Math.sqrt(x * x + y * y);
 }
 
 // Check if colliding with polygon 
 function spriteCollisions(){
 	var info=[];
-	var bump = Math.random()*3+3;
-	for(i=0;i<segments.length;i++){
+	var bump = Math.random()*3+5;
+	// Don't check border
+	for(i=4;i<segments.length;i++){
 		for(let j=0;j<npcs.length;j++){
 			info = minDistance([segments[i].a.x,segments[i].a.y],
 				[segments[i].b.x,segments[i].b.y],[npcs[j].x,npcs[j].y]);
-			if(info[0]<1){
-				if((npcs[j].x - info[1].x)<0){
-					npcs[j].x = npcs[j].x-bump;
-				}else{
-					npcs[j].x = npcs[j].x+bump;
-				}
-				if((npcs[j].y - info[1].y)<0){
-					npcs[j].y = npcs[j].y-bump;
-				}else{
-					npcs[j].y = npcs[j].y+bump;
-				}
-				if(npcs[j].s.x>npcs[j].s.y){
-						npcs[j].s.y=-npcs[j].s.y+.6;
-						npcs[j].s.x=npcs[j].s.x*.6;
-				}else{
-						npcs[j].s.x=-npcs[j].s.x+.6;
-						npcs[j].s.y=npcs[j].s.y*.6;
-				}
+				switch(segments[i].s) {
+  					case 1:
+						if(info[0]<npcsSize){
+						npcs[j].y = info[1].y-bump-npcsSize;}
+						break;
+  					case 2:
+					    if(info[0]<4){
+						npcs[j].x = info[1].x+bump;}
+						break;
+  					case 3:
+						if(info[0]<4){
+						npcs[j].y = info[1].y+bump;}
+						break;
+  					case 4:
+					  if(info[0]<npcsSize){
+						npcs[j].x = info[1].x-bump-npcsSize;}
+						break;
 				}
 		}
 	}	
@@ -672,34 +930,108 @@ function rayMove(){
 	}else nextMove += Math.random()*5;
 	SpaceRay.x+=SpaceRay.sX;
 	SpaceRay.y+=SpaceRay.sY;
-	if(SpaceRay.x>c.w-10||SpaceRay.x<10){
+	if(SpaceRay.x>c.w-20||SpaceRay.x<20){
 		SpaceRay.sX=-SpaceRay.sX;
-	}if(SpaceRay.y>c.h-10||SpaceRay.y<10){
+	}if(SpaceRay.y>c.h-20||SpaceRay.y<20){
 		SpaceRay.sY=-SpaceRay.sY;
 	}
 }
 
 //Note: works but slow, need faster solution
 function rayKill(){
-	for(i=0;i<rayXY.length;i+=12){
+	for(i=0;i<rayXY.length;i+=15){
 		for(let j=0;j<npcs.length;j++){
 			if(!npcs[j].dead){
 			 if(isTouchingRay(rayXY[i],[npcs[j].x,npcs[j].y])){
 				npcs[j].dead = true;
-				//npcs[i].newSeq([0]);
+				count--;
+			}else if(npcs[j].isClose(SpaceRay.x,SpaceRay.y, 5)){
+				scareNPC(j);
 			}
 		}
 		}
+		if(!hero.dead&&isTouchingRay(rayXY[i],[hero.x,hero.y])){
+			hero.dead=true;
+		}
+	}
+	
+}
+
+function scareNPC(j){
+	if(SpaceRay.sX>0){
+		if(npcs[j].x<SpaceRay.x){
+			npcs[j].s.x = -SpaceRay.sX/2;
+		}else{
+			npcs[j].s.x = SpaceRay.sX/2;}
+	}else{
+		if(npcs[j].x<SpaceRay.x){
+			npcs[j].s.x = SpaceRay.sX/2;
+		}else{
+			npcs[j].s.x = -SpaceRay.sX/2;}
+	}
+	if(SpaceRay.sY>0){
+		if(npcs[j].y<SpaceRay.sY){
+			npcs[j].s.y = -SpaceRay.sY/2;
+		}else{
+			npcs[j].s.y = SpaceRay.sY/2;}
+	}else{
+		if(npcs[j].x<SpaceRay.x){
+			npcs[j].s.y = SpaceRay.sY/2;
+		}else{
+			npcs[j].s.y = -SpaceRay.sY/2;}
 	}
 }
 
 function isTouchingRay(rayEndPoint,npcsPoint){
 	let result = minDistance([SpaceRay.x,SpaceRay.y],
 				[rayEndPoint.x,rayEndPoint.y],[npcsPoint[0],npcsPoint[1]]);
-	if(result[0]<=1){
+	if(result[0]<=npcsSize){
 		return true;
 	}else{
 		return false;
+	}
+}
+
+function isGameOver(){
+	if(count==0){return true;}
+}
+
+function reset(){
+	for(let j=0;j<npcs.length;j++){
+		npcs[j].dead=false;
+	}
+	
+	if(win&&stopTime>localStorage.getItem('longTime')){
+		localStorage.setItem('longTime', stopTime);
+		longest = stopTime;
+	}
+	if(localStorage.getItem('shortTime')==null||localStorage.getItem('shortTime')==0 && win){
+		localStorage.setItem('shortTime', stopTime);
+		shortest = stopTime;
+	}else if(stopTime<localStorage.getItem('shortTime')){
+		localStorage.setItem('shortTime', stopTime);
+		shortest = stopTime;
+	}
+	total = total+stopTime;
+	localStorage.setItem("nSims", nSims);
+	localStorage.setItem("total", total);
+	s=0;
+	SpaceRay.x = c.w/2;
+	SpaceRay.y = c.h/2;
+	hero.dead =false;
+	reload=true;
+	rayLength=80;
+}
+
+function scatter(x,y){
+	for(let j=0;j<npcs.length;j++){
+		if(npcs[j].isClose(x,y,3)){
+			npcs[j].s.x = randomS()*2;
+			npcs[j].s.y = randomS()*2;
+
+			npcs[j].x+=randomS()*npcsSize*2;
+			npcs[j].y+=randomS()*npcsSize*2;
+		}
 	}
 }
 </script>
