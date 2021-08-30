@@ -49,8 +49,9 @@ reload=true,
 win=false,
 stopTime=0,
 errorReset=0;
-var shortest = localStorage.getItem('shortTime')||0;
-var nSims = localStorage.getItem('nSims')||0;
+const APP_NAME = 'spaceAbductionSimulator';
+var shortest = localStorage.getItem(`${APP_NAME}.shortTime`)||0;
+var nSims = localStorage.getItem(`${APP_NAME}.nSims`)||0;
 
 //***PIANO****  forked xem https://github.com/xem/miniPiano
 // https://github.com/Vertfromage/miniPiano
@@ -1128,14 +1129,14 @@ function reset(){
 	for(let j=0;j<npcs.length;j++){
 		npcs[j].dead=false;
 	}
-	if(localStorage.getItem('shortTime')==null||localStorage.getItem('shortTime')==0 && win){
-		localStorage.setItem('shortTime', stopTime);
+	if(localStorage.getItem(`${APP_NAME}.shortTime`)==null||localStorage.getItem(`${APP_NAME}.shortTime`)==0 && win){
+		localStorage.setItem(`${APP_NAME}.shortTime`, stopTime);
 		shortest = stopTime;
-	}else if(win && stopTime<localStorage.getItem('shortTime')){
-		localStorage.setItem('shortTime', stopTime);
+	}else if(win && stopTime<localStorage.getItem(`${APP_NAME}.shortTime`)){
+		localStorage.setItem(`${APP_NAME}.shortTime`, stopTime);
 		shortest = stopTime;
 	}
-	localStorage.setItem("nSims", nSims);
+	localStorage.setItem(`${APP_NAME}.nSims`, nSims);
 	s=0;
 	SpaceRay.x = c.w/2;
 	SpaceRay.y = c.h/2;
