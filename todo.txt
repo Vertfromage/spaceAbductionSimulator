@@ -2,6 +2,7 @@ TODO:
 
 - sound (shooting, ray changing directions)
 - music
+- different style jet for coil
 - Option to set difficulty
 - UI % saved.
 - share on twitter

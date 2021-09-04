@@ -8,7 +8,7 @@
 <!-- https://youtu.be/eI9idPTT0c4?list=PLahViQwacq_JOlpMx0s9nv26ZGM-nMes6&t=1064 projectiles -->
 <!-- https://www.scien.cx/2021/07/12/requestanimationframe-in-javascript/ -->
 <html>
-		<head><meta charset="utf-8" />
+		<head><meta charset="utf-8" /><meta name="monetization" content="$ilp.uphold.com/2Jen2dyhU7B2">
 		<style>
 			canvas{
 				/* background: url(background.svg); */
@@ -23,12 +23,17 @@
 	</body>
 </html>
 <script>
+var fireFox=false;
 // initialize 2D a (c)
 // initialize game state (s)
 // initialize keys states (u,r,d,l for directions, k for all the keyboard)
 c = canvas.getContext`2d`, k = [u = r = d = l = s = 0]
 canvas.width = innerWidth;
 canvas.height = innerHeight;
+
+if (navigator.userAgent.indexOf("Firefox") != -1 ) {
+    fireFox = true;
+}
 // (initialize your global variables here)
 c.w = innerWidth;
 c.h = innerHeight;
@@ -49,50 +54,59 @@ reload=true,
 win=false,
 stopTime=0,
 errorReset=0;
+// https://medium.com/@emadalam/namespace-localstorage-e2d1d2e68b20
 const APP_NAME = 'spaceAbductionSimulator';
 var shortest = localStorage.getItem(`${APP_NAME}.shortTime`)||0;
 var nSims = localStorage.getItem(`${APP_NAME}.nSims`)||0;
 
 //***PIANO****  forked xem https://github.com/xem/miniPiano
 // https://github.com/Vertfromage/miniPiano
-mySong = [1,1,1,2,2,3,3,4,28,25,28,23,25,24,21,21,21];
-var shootNoise;
+//***PIANO****
+//200 speed
+juliaSong = [0,7,12,9,7,12,9,0,31,7,12,9,28,7,12,26,9,0,7,28,12,9,7,12,9,0,7,12,9,7,12,9,0,7,12,9,28,7,12,26,9,0,7,28,12,9,7,12,9,0,7,12,9,7,12,9,0];
+randomSong = [26,29,24,31,24,26,28,23,24,29,24,14,16,21,26,32,33,33,23,22,23,14,16,28,16];
 let on = false;	 
 var timerId;
-const builtSong =[];
+var speed = 200;
+var builtSong =[];
+var count=0;
+var audioCtx = [];
+var shootNoise;
+var SONG = randomSong;
 
 function buildsong(mySong, len, piano){
-    mySong.forEach(element => {
-            builtSong.push(getD(element,len,piano));
-            console.log(builtSong.length);
-    });
-    console.log("buildsong...");
+   for(let i=0;i<11;i++){
+  	audioCtx[i]= new AudioContext;
+   }
+  i =0;
+  let j;
+  mySong.forEach(element => {
+          j=i%10;
+          builtSong.push( audioCtx[j].createBuffer(1, 1e6, 44100));
+          builtSong[i].getChannelData(0).set(getD(element,len,piano));
+          i++;
+  });
 }
 
 function playTheSong(song){
-    let elm = 0;
-    timerId= setTimeout(function run() {
-    console.log(elm);
-    if(elm==song.length){
-        elm=0;
-        console.log("reached end");
-    }
-    playTheNote(song[elm]);
-    elm++;
-    timerId = setTimeout(run, 1000);
-    }, 1000);
-    on = true;
-	console.log("play song...");
+  let elm = 0;
+  timerId= setTimeout(function run() {
+  if(elm==builtSong.length){
+      playTheSong(song);
+  }else{
+  playTheNote(elm);
+  elm++;
+  timerId = setTimeout(run, speed);}
+  }, speed);
+  on = true;
 }
 
-function playTheNote(D){
-    A = new AudioContext,
-    mm = A.createBuffer(1, 1e6, 44100),
-    mm.getChannelData(0).set(D),
-    ss = A.createBufferSource(),
-    ss.buffer = mm,
-    ss.connect(A.destination),
-    ss.start()
+function playTheNote(note){
+  j = note%10;
+  source = audioCtx[j].createBufferSource();
+  source.buffer = builtSong[note];
+  source.connect(audioCtx[j].destination);
+  source.start();
 }
 
 function getF(i){ return 130.81 * 1.06 ** i;}
@@ -161,6 +175,13 @@ function getD(note, len, piano){
           : (1 - (tick - 88.2) / (44100 * (V - .002))) ** (uh ? (.5 * Math.log(1e4 * note / 44100)) ** 2 : 1) * w(tick, note);
         }
         return D;
+}
+
+function playOneNote(note){
+    source = audioCtx[10].createBufferSource();
+    source.buffer = note;
+    source.connect(audioCtx[10].destination);
+    source.start();
 }
 //***END PIANO****
 
@@ -331,10 +352,14 @@ function findIntersect(angle, sightX, sightY){
 
   
 
-
+if(fireFox){
+	var foreground = new Image();
+	foreground.src = "blue.png";
+}else{
 // DRAWING
 var foreground = new Image();
-foreground.src = "AlienRay.svg"
+foreground.src = "AlienRay.svg";}
+
 
 function draw(){
 
@@ -372,9 +397,13 @@ function draw(){
 		c.lineTo(seg.b.x,seg.b.y);
 	}
 	c.stroke();
+
 	// Masked Foreground
 	c.globalCompositeOperation = "source-in";
-	c.drawImage(foreground,0,0);
+	if(fireFox){
+	c.drawImage(foreground,0,0,c.w,c.h);
+    }else{
+	c.drawImage(foreground,0,0);}
 	c.globalCompositeOperation = "source-over";
 
 	if(rayLength>10){
@@ -508,9 +537,10 @@ onclick = e => {
 			if(!on){
     			on=true;
     			// build the song
-    			buildsong(mySong, 3, true);
+    			buildsong(SONG, 3, true);
 				// build noises
-				shootNoise = getD(32, 3, false);
+				shootNoise= audioCtx[10].createBuffer(1, 1e6, 44100);
+  				shootNoise.getChannelData(0).set(getD(32,3,false));
     			// play the song
     			playTheSong(builtSong);
     			}
@@ -611,7 +641,7 @@ function destroyLaser (laser) {
 function shootlaser(x,y){
 	let velocity = getVelocity({x:hero.x,y:hero.y},{x:x,y:y});
 	lasers.push(new Laser( hero.x,hero.y, velocity));
-	playTheNote(shootNoise);
+	playOneNote(shootNoise);
 }
 
 function playLasers(){
@@ -716,7 +746,8 @@ function title() {
     tx("Space Invasion Simulator", c.w / 2, c.h * .55, 4, '#a4f3f4');
     tx("Protect them or be witness to their doom!", c.w / 2, c.h * .62, 2, '#a4f3f4');
 	tx("Click to fire and scatter panicked crowds.", c.w / 2, c.h * .68, 1.7, '#a4f3f4');
-
+	if(document.monetization && document.monetization.state === 'started') {
+		tx("Hello Subscribers!", c.w / 2, c.h * .4, 1.7, '#fff');}
 	if(errorReset!=0){
 		tx("Appologies, ERROR in space transmission of invasion simulaton, RESTART REQUIRED.",
 		c.w*.5,c.h*.9, 1.7, '#ff0000');
@@ -766,7 +797,7 @@ function game(){
 		if(!hero.dead){
 			drawFighterJet();
 		
-		if(timedMove>200){
+		if(timedMove>100){
 		moveJet();
 		timedMove=0;
 
@@ -1053,8 +1084,8 @@ var SpaceRay = {
 
 function rayMove(){
 	if(nextMove>200){
-		SpaceRay.sX = randomS()*5;
-		SpaceRay.sY = randomS()*5;
+		SpaceRay.sX = randomS()*8;
+		SpaceRay.sY = randomS()*8;
 		nextMove =0;
 	}else nextMove += Math.random()*5;
 	SpaceRay.x+=SpaceRay.sX;
