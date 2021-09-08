@@ -8,7 +8,8 @@
 <!-- https://youtu.be/eI9idPTT0c4?list=PLahViQwacq_JOlpMx0s9nv26ZGM-nMes6&t=1064 projectiles -->
 <!-- https://www.scien.cx/2021/07/12/requestanimationframe-in-javascript/ -->
 <html>
-		<head><meta charset="utf-8" /><meta name="monetization" content="$ilp.uphold.com/2Jen2dyhU7B2">
+		<head><meta charset="utf-8" />
+			<meta name="monetization" content="$ilp.uphold.com/2Jen2dyhU7B2">
 		<style>
 			canvas{
 				/* background: url(background.svg); */
@@ -572,7 +573,12 @@ const mouse = {
 };
 
 const plane = new Image();
-plane.src = "plane.png";
+if(document.monetization && document.monetization.state === 'started') { 
+		plane.src = "jet.png";
+}else{
+		plane.src = "plane.png";
+	}
+
 
 const hero = {
   x: 100,
@@ -639,8 +645,16 @@ function destroyLaser (laser) {
 }
 
 function shootlaser(x,y){
-	let velocity = getVelocity({x:hero.x,y:hero.y},{x:x,y:y});
-	lasers.push(new Laser( hero.x,hero.y, velocity));
+	if(document.monetization && document.monetization.state === 'started') { 
+		let w = hero.w/2;
+		let velocity1 = getVelocity({x:hero.x,y:hero.y+w},{x:x,y:y});
+		let velocity2 = getVelocity({x:hero.x,y:hero.y-w},{x:x,y:y});
+		lasers.push(new Laser( hero.x,hero.y+w, velocity1));
+		lasers.push(new Laser( hero.x,hero.y-w, velocity2));
+	}else{
+		let velocity = getVelocity({x:hero.x,y:hero.y},{x:x,y:y});
+		lasers.push(new Laser( hero.x,hero.y, velocity));
+	}
 	playOneNote(shootNoise);
 }
 
@@ -648,8 +662,6 @@ function playLasers(){
 	lasers.forEach((laser)=>{
 		laser.update();
 		laser.draw();
-	})
-	lasers.forEach((laser)=>{
 		if(laser.outOfBounds){
 			destroyLaser(laser);
 		}
@@ -732,9 +744,9 @@ function title() {
     	c.fillRect(0, 0, c.w, c.h/10);
 		tx("Simulations: "+nSims, c.w / 5, c.h/15, 3, '#a4f3f4');
 		if(stopTime>0){
-		tx("Time: "+displayTime(stopTime)+"  Fastest: "+displayTime(shortest),c.w *.6, c.h/15, 3, '#a4f3f4');
+		tx("Time: "+displayTime(stopTime)+"  Fastest Win: "+displayTime(shortest)+"  Saved: ",c.w *.6, c.h/15, 3, '#a4f3f4');
 		}else{
-			tx("Shortest: "+displayTime(shortest),c.w *.7, c.h/15, 3, '#a4f3f4');
+			tx("Fastest Win: "+displayTime(shortest)+"  Saved: ",c.w *.7, c.h/15, 3, '#a4f3f4');
 		}
 	}
 
@@ -807,12 +819,11 @@ function game(){
 		}
 		timedMove++;
 		}
-		// not sure it's an improvement
+		// Time until you can fire again
 		if(reloadTime>25000){
 			reload=true;
 			reloadTime=0;
 		}
-	
 		reloadTime++;
 		
 	}
@@ -821,6 +832,7 @@ function game(){
 		rayMove();
 		rayKill();
 	}else{
+		// win
 		restartButton(0);
 	}
 	c.fillStyle = '#0000007f';
@@ -1099,7 +1111,7 @@ function rayMove(){
 
 //Note: works but slow, need faster solution
 function rayKill(){
-	for(i=0;i<rayXY.length;i+=15){
+	for(i=0;i<rayXY.length;i+=20){
 		for(let j=0;j<npcs.length;j++){
 			if(!npcs[j].dead){
 			 if(isTouchingRay(rayXY[i],[npcs[j].x,npcs[j].y])){
@@ -1176,6 +1188,11 @@ function reset(){
 	rayLength=80;
 	segments = [];
 	randomPolygons(segments);
+}
+
+//ToDo: Change so we store and display percent of the population saved. 
+function tweet(){
+	window.open(`https://twitter.com/intent/tweet?hashtags=js13k&original_referer=https%3A%2F%2Fpublish.twitter.com%2F&ref_src=twsrc%5Etfw%7Ctwcamp%5Ebuttonembed%7Ctwterm%5Eshare%7Ctwgr%5E&text=I%20played%20Space%20Invasion%20Simulator%20and%20saved%20${localStorage.getItem(`${APP_NAME}.shortTime`)}%25%20of%20the%20population!&url=https%3A%2F%2Fjs13kgames.com%2Fentries%2Fspace-invasion-simulator&via=vertfromageio`);
 }
 
 function scatter(x,y){
