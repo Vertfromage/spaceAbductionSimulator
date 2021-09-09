@@ -63,7 +63,6 @@ var nSims = localStorage.getItem(`${APP_NAME}.nSims`)||0;
 
 //***PIANO****  forked xem https://github.com/xem/miniPiano
 // https://github.com/Vertfromage/miniPiano
-//***PIANO****
 //200 speed
 juliaSong = [0,7,12,9,7,12,9,0,31,7,12,9,28,7,12,26,9,0,7,28,12,9,7,12,9,0,7,12,9,7,12,9,0,7,12,9,28,7,12,26,9,0,7,28,12,9,7,12,9,0,7,12,9,7,12,9,0];
 randomSong = [26,29,24,31,24,26,28,23,24,29,24,14,16,21,26,32,33,33,23,22,23,14,16,28,16];
@@ -74,6 +73,7 @@ var builtSong =[];
 var count=0;
 var audioCtx = [];
 var shootNoise;
+var hitNoise;
 var SONG = randomSong;
 
 function buildsong(mySong, len, piano){
@@ -539,10 +539,12 @@ onclick = e => {
 				// build noises
 				shootNoise= audioCtx[10].createBuffer(1, 1e6, 44100);
   				shootNoise.getChannelData(0).set(getD(32,3,false));
+				hitNoise = audioCtx[10].createBuffer(1, 1e6, 44100);
+				hitNoise.getChannelData(0).set(getD(4,4,false));
     			// play the song
     			playTheSong(builtSong);
     			}
-			s=1;}else if(inBox(x,y,c.w/3,c.w/3*2, c.h*.8 , c.h*.8+c.h/10)){
+			s=1;}else if(inBox(x,y,c.w/3,c.w/3*2, c.h*.8 , c.h*.8+c.h/10)&&win){
 				tweet();
 			}
             break;
@@ -620,6 +622,7 @@ class Laser{
 		if(this.isClose(SpaceRay.x,SpaceRay.y,30)){
 			rayLength-=10;
 			this.outOfBounds=true;
+			playOneNote(hitNoise);
 		}
 	};
 
@@ -852,7 +855,7 @@ function game(){
 	tx("[Space Invasion Simulator]", c.w / 5, c.h/15, 2.5, '#a4f3f4');
 	tx("Population: "+count+"  Timer: "+timer, c.w*.6, c.h/15, 2.5, '#a4f3f4');
 	if(!reload){
-			tx("Charging gun...", c.w*.9, c.h/15, 2, 'F00');
+			tx("Charging gun...", c.w*.9, c.h/15, 2, '#E35A31');
 		}
 	if(hero.dead){
 			restartButton(1);
@@ -878,7 +881,7 @@ function restartButton(result){
 	transRec();
 	let txt1,
 	txt2,
-	txt3 = "Click to restart!";
+	txt3 = "CLICK TO RESTART";
 	if(result==1){
 	txt1 = "Hero Dead";
 	txt2="Invasion continues as planned.";
@@ -891,9 +894,9 @@ function restartButton(result){
 	txt1 = "Hero destroys ray!";
 	txt2 = "Invasion halted";
 }
-	tx(txt1, c.w / 2, c.h*.4, 2.7, '#a4f3f4');
-	tx(txt2, c.w / 2, c.h*.47, 1.8, '#a4f3f4');
-	tx(txt3, c.w / 2, c.h*.55, 1.8, '#a4f3f4');
+	tx(txt1, c.w / 2, c.h*.4, 3, '#E35A31');
+	tx(txt2, c.w / 2, c.h*.47, 2, '#a4f3f4');
+	tx(txt3, c.w / 2, c.h*.55, 1.7, '#E35A31');
 }
 /////////////////////////////////////////////
 // SPRITE STUFF
@@ -1202,11 +1205,9 @@ function reset(){
 		npcs[j].dead=false;
 	}
 	if((localStorage.getItem(`${APP_NAME}.shortTime`)==null||localStorage.getItem(`${APP_NAME}.shortTime`)==0) && win){
-		console.log(win);
 		localStorage.setItem(`${APP_NAME}.shortTime`, stopTime);
 		shortest = stopTime;
 	}else if(win && stopTime<localStorage.getItem(`${APP_NAME}.shortTime`)){
-		console.log(win);
 		localStorage.setItem(`${APP_NAME}.shortTime`, stopTime);
 		shortest = stopTime;
 	}
