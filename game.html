@@ -306,8 +306,6 @@ function getSightPolygon(sightX,sightY){
 		if(!(closestIntersect== null)){
 		// Add to list of intersects
 		intersects.push(closestIntersect);}else{
-			//console.log("Something went wrong, sorry reset game!");
-			//console.log("null value! Ray location: "+SpaceRay.x+","+SpaceRay.y);
 			errorReset++;
 			reset();
 			break;
@@ -500,10 +498,11 @@ function smoothAnimation(e) {
         case 0: title();
             break;
         case 1:
+			win=false;
 			game();
 			if(isGameOver()){
-				stopTime=Math.floor(Date.now() / 1000)-startTime;
 				nSims++;
+				stopTime=Math.floor(Date.now() / 1000)-startTime;
 				s=2};
             break;
 		case 2:
@@ -551,8 +550,8 @@ onclick = e => {
 				if(hero.dead||rayLength<=10){
 					if(x>c.w/3&&x<c.w/3*2){
 						if(y>c.h/3&&y<c.h-c.h/4){
-							stopTime=Math.floor(Date.now() / 1000)-startTime;
 							nSims++;
+							stopTime=Math.floor(Date.now() / 1000)-startTime;
 							reset();
 						}
 					}
@@ -564,6 +563,7 @@ onclick = e => {
             break;
     }
 }
+
 
 //*** Jet Fighter START ***
 timedMove=0;
@@ -739,14 +739,18 @@ function title() {
 	rayMove();
 	draw();
 
-	if(shortest!=0){
+	if(nSims!=0){
 		c.fillStyle = '#0000007f';
     	c.fillRect(0, 0, c.w, c.h/10);
-		tx("Simulations: "+nSims, c.w / 5, c.h/15, 3, '#a4f3f4');
-		if(stopTime>0){
-		tx("Time: "+displayTime(stopTime)+"  Fastest Win: "+displayTime(shortest)+"  Saved: ",c.w *.6, c.h/15, 3, '#a4f3f4');
-		}else{
-			tx("Fastest Win: "+displayTime(shortest)+"  Saved: ",c.w *.7, c.h/15, 3, '#a4f3f4');
+		tx("Simulations: "+nSims, c.w / 5, c.h/15, 2.7, '#a4f3f4');
+		if(shortest>0){
+			if(stopTime>0){tx("Time: "+displayTime(stopTime)+" Fastest Win: "+displayTime(shortest),c.w *.6, c.h/15, 2.7, '#a4f3f4');}
+			else{tx("Fastest: "+displayTime(shortest),c.w *.7, c.h/15, 2.7, '#a4f3f4');}
+		}else if(stopTime>0){
+			tx("Time: "+displayTime(stopTime),c.w *.6, c.h/15, 2.7, '#a4f3f4');
+		}
+		if(win){
+			tx("Saved: "+Math.floor(count/numnpcs*100)+"%",c.w *.9, c.h/15, 2.7, '#a4f3f4');
 		}
 	}
 
@@ -755,14 +759,14 @@ function title() {
 	c.fillStyle = '#000000';
     c.fillRect(c.w/4+10, c.h/3+10, c.w/2-20, c.h/2-20);
     
-    tx("Space Invasion Simulator", c.w / 2, c.h * .55, 4, '#a4f3f4');
-    tx("Protect them or be witness to their doom!", c.w / 2, c.h * .62, 2, '#a4f3f4');
-	tx("Click to fire and scatter panicked crowds.", c.w / 2, c.h * .68, 1.7, '#a4f3f4');
+    tx("Space Invasion Simulator", c.w / 2, c.h * .55, 3.5, '#a4f3f4');
+    tx("Protect them or be witness to their doom!", c.w / 2, c.h * .62, 1.7, '#a4f3f4');
+	tx("Mouse to move. Click to fire.", c.w / 2, c.h * .68, 1.5, '#a4f3f4');
 	if(document.monetization && document.monetization.state === 'started') {
-		tx("Hello Subscribers!", c.w / 2, c.h * .4, 1.7, '#fff');}
+		tx("Hello Subscribers!", c.w / 2, c.h * .4, 1.5, '#fff');}
 	if(errorReset!=0){
 		tx("Appologies, ERROR in space transmission of invasion simulaton, RESTART REQUIRED.",
-		c.w*.5,c.h*.9, 1.7, '#ff0000');
+		c.w*.5,c.h*.9, 1.5, '#ff0000');
 	}
     
     tx('CLICK TO START!', c.w /2, c.h * .75, 1.5, '#a4f3f4');
@@ -806,39 +810,38 @@ function game(){
 		npcs[i].move();
         npcs[i].update();
         npcs[i].render();
-		if(!hero.dead){
+	}
+	if(!hero.dead){
 			drawFighterJet();
 		
-		if(timedMove>100){
+	if(timedMove>100){
 		moveJet();
 		timedMove=0;
 
 		if(lasers.length>0){
 		  playLasers();
 		}
-		}
-		timedMove++;
-		}
-		// Time until you can fire again
-		if(reloadTime>25000){
-			reload=true;
-			reloadTime=0;
-		}
-		reloadTime++;
-		
+	}
+	timedMove++;
 	}
     }
+
+	// Time until you can fire again
+	if(reloadTime>20){
+		reload=true;
+		reloadTime=0;
+	}
+	reloadTime++;
 	if(rayLength>10){
 		rayMove();
 		rayKill();
 	}else{
-		// win
 		restartButton(0);
 	}
 	c.fillStyle = '#0000007f';
     c.fillRect(0, 0, c.w, c.h/12);
-	tx("Space Invasion Simulator", c.w / 5, c.h/15, 3, '#a4f3f4');
-	tx("Population: "+count+"  Timer: "+timer, c.w*.6, c.h/15, 3, '#a4f3f4');
+	tx("[Space Invasion Simulator]", c.w / 5, c.h/15, 2.5, '#a4f3f4');
+	tx("Population: "+count+"  Timer: "+timer, c.w*.6, c.h/15, 2.5, '#a4f3f4');
 	if(!reload){
 			tx("Charging gun...", c.w*.9, c.h/15, 2, 'F00');
 		}
@@ -850,22 +853,26 @@ function game(){
 function tx(t, w, h, f, s) {
     c.textAlign = 'center';
     c.fillStyle = s;
-    c.font = f + 'vw Arial';
+    c.font = f + 'vw Consolas';
     c.fillText(t, w, h);
 }
 
-function restartButton(result){
+function transRec(){
 	c.fillStyle = '#000000df';
 	c.fillRect(c.w/3, c.h/3, c.w/3, c.h/4);
+}
+
+function restartButton(result){
+	transRec();
 	if(result==1){
-	tx("Hero dead", c.w / 2, c.h*.4, 3, '#a4f3f4');
-	tx("Invasion continues as planned.", c.w / 2, c.h*.47, 2, '#a4f3f4');
-	tx("Click here to restart!", c.w / 2, c.h*.55, 2, '#a4f3f4');
+	tx("Hero dead", c.w / 2, c.h*.4, 2.7, '#a4f3f4');
+	tx("Invasion continues as planned.", c.w / 2, c.h*.47, 1.8, '#a4f3f4');
+	tx("Click to restart!", c.w / 2, c.h*.55, 1.8, '#a4f3f4');
 }else{
 	win=true;
-	tx("Hero destroys ray", c.w / 2, c.h*.4, 3, '#a4f3f4');
-	tx("Invasion halted!", c.w / 2, c.h*.47, 2, '#a4f3f4');
-	tx("Click here to restart!", c.w / 2, c.h*.55, 2, '#a4f3f4');
+	tx("Hero destroys ray!", c.w / 2, c.h*.4, 2.7, '#a4f3f4');
+	tx("Invasion halted", c.w / 2, c.h*.47, 1.8, '#a4f3f4');
+	tx("Click to restart!", c.w / 2, c.h*.55, 1.8, '#a4f3f4');
 }
 }
 /////////////////////////////////////////////
@@ -1062,6 +1069,7 @@ function spriteCollisions(){
 	// Don't check border
 	for(i=4;i<segments.length;i++){
 		for(let j=0;j<npcs.length;j++){
+			if(!npcs[j].dead){
 			info = minDistance([segments[i].a.x,segments[i].a.y],
 				[segments[i].b.x,segments[i].b.y],[npcs[j].x,npcs[j].y]);
 				switch(segments[i].s) {
@@ -1083,6 +1091,7 @@ function spriteCollisions(){
 						break;
 				}
 		}
+	}
 	}	
 }
 
@@ -1165,17 +1174,19 @@ function isTouchingRay(rayEndPoint,npcsPoint){
 }
 
 function isGameOver(){
-	if(count==0){return true;}
+	if(count==0||hero.dead||rayLength<=10){return true;}
 }
 
 function reset(){
 	for(let j=0;j<npcs.length;j++){
 		npcs[j].dead=false;
 	}
-	if(localStorage.getItem(`${APP_NAME}.shortTime`)==null||localStorage.getItem(`${APP_NAME}.shortTime`)==0 && win){
+	if((localStorage.getItem(`${APP_NAME}.shortTime`)==null||localStorage.getItem(`${APP_NAME}.shortTime`)==0) && win){
+		console.log(win);
 		localStorage.setItem(`${APP_NAME}.shortTime`, stopTime);
 		shortest = stopTime;
 	}else if(win && stopTime<localStorage.getItem(`${APP_NAME}.shortTime`)){
+		console.log(win);
 		localStorage.setItem(`${APP_NAME}.shortTime`, stopTime);
 		shortest = stopTime;
 	}
@@ -1197,7 +1208,7 @@ function tweet(){
 
 function scatter(x,y){
 	for(let j=0;j<npcs.length;j++){
-		if(npcs[j].isClose(x,y,3)){
+		if(!npcs[j].dead&&npcs[j].isClose(x,y,3)){
 			npcs[j].s.x = randomS()*2;
 			npcs[j].s.y = randomS()*2;
 
@@ -1209,6 +1220,8 @@ function scatter(x,y){
 
 // Change values when window is resized
 window.onresize = function() {
+		canvas.width = innerWidth, canvas.height = innerHeight;
+		c.w=canvas.width, c.h = canvas.height;
 	       errorReset++;
            reset();		   
 		};
